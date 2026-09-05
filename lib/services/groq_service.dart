@@ -12,6 +12,9 @@ class GroqService {
   static const _model = 'llama-3.1-8b-instant';
 
   String? get _apiKey {
+    // Prefer compile-time --dart-define, fall back to dotenv
+    const fromDefine = String.fromEnvironment('GROQ_API_KEY');
+    if (fromDefine.isNotEmpty) return fromDefine;
     try {
       return dotenv.env['GROQ_API_KEY'];
     } catch (_) {
