@@ -9,14 +9,11 @@ import '../models/vibe_result.dart';
 class TmdbService {
   static const _base = 'https://api.themoviedb.org/3';
 
-  String? get _apiKey {
-    const fromDefine = String.fromEnvironment('TMDB_API_KEY');
+    String? get _apiKey {
+    // Strictly read the key compiled directly from GitHub Secrets via dart-define
+    const fromDefine = const String.fromEnvironment('TMDB_API_KEY');
     if (fromDefine.isNotEmpty) return fromDefine;
-    try {
-      return dotenv.env['TMDB_API_KEY'];
-    } catch (_) {
-      return null;
-    }
+    return null;
   }
 
   Future<Movie> findMovieForMood(VibeAnalysis analysis) async {
