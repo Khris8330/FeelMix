@@ -12,11 +12,29 @@ class AppColors {
   static const textSecondary = Color(0xFF9A9AB0);
   static const glass = Color(0x22FFFFFF);
 
+  // Glass / surface variants used by richer UI
+  static const surfaceGlass = Color(0x14FFFFFF);
+  static const borderGlass = Color(0x22FFFFFF);
+
   static const equalizerGradient = LinearGradient(
     colors: [Color(0xFFFF3D8A), Color(0xFF7B61FF), Color(0xFF00E5C7)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
+
+  static const backgroundGradient = LinearGradient(
+    colors: [Color(0xFF0B0B12), Color(0xFF14121F)],
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+  );
+}
+
+class AppRadii {
+  static const double sm = 12;
+  static const double md = 16;
+  static const double lg = 20;
+  static const double xl = 28;
+  static const double pill = 999;
 }
 
 class AppTheme {
