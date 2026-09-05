@@ -10,6 +10,8 @@ class TmdbService {
   static const _base = 'https://api.themoviedb.org/3';
 
   String? get _apiKey {
+    const fromDefine = String.fromEnvironment('TMDB_API_KEY');
+    if (fromDefine.isNotEmpty) return fromDefine;
     try {
       return dotenv.env['TMDB_API_KEY'];
     } catch (_) {
