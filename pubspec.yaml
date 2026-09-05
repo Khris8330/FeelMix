@@ -1,0 +1,59 @@
+name: feelmix
+description: "FeelMix — AI-powered mood-to-media matcher. Tell it your vibe, get your mix."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State management
+  provider: ^6.1.2
+
+  # Networking
+  http: ^1.2.2
+
+  # Backend (Supabase free tier — auth, postgres, pgvector)
+  supabase_flutter: ^2.6.0
+
+  # Fonts (Syne / Plus Jakarta Sans / Inter) — served from Google Fonts free CDN,
+  # bundled at build time so no runtime network dependency.
+  google_fonts: ^6.2.1
+
+  # Skeleton shimmer loading states
+  shimmer: ^3.0.0
+
+  # Share Card: render a widget to an image + share it natively
+  screenshot: ^3.0.0
+  share_plus: ^10.1.2
+
+  # Local caching of last vibe / results so app feels instant on relaunch
+  shared_preferences: ^2.3.2
+  path_provider: ^2.1.4
+
+  # Icons + small utils
+  cupertino_icons: ^1.0.8
+  uuid: ^4.5.1
+  intl: ^0.19.0
+
+  # Env vars for API keys (all free-tier), never hardcoded
+  flutter_dotenv: ^5.2.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - .env
+    - assets/images/
+
+  # NOTE: Syne / Plus Jakarta Sans / Inter are pulled via google_fonts at build
+  # time (cached, free, no API key). If you prefer fully offline builds, drop
+  # the .ttf files into assets/fonts/ and uncomment a `fonts:` block here.
