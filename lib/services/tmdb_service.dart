@@ -9,25 +9,30 @@ import '../models/vibe_result.dart';
 class TmdbService {
   static const _base = 'https://api.themoviedb.org/3';
 
-  String? get _apiKey => dotenv.env['TMDB_API_KEY'];
+  String? get _apiKey {
+    try {
+      return dotenv.env['TMDB_API_KEY'];
+    } catch (_) {
+      return null;
+    }
+  }
 
   Future<Movie> findMovieForMood(VibeAnalysis analysis) async {
     if (_apiKey == null || _apiKey!.isEmpty) {
       return Movie.mock();
     }
 
-    // Simple keyword → genre mapping for free-tier reliability
     final keyword = analysis.keywords.isNotEmpty
         ? analysis.keywords.first.toLowerCase()
         : 'drama';
 
     int? genreId;
     if (keyword.contains('melanch') || keyword.contains('sad') || keyword.contains('heart')) {
-      genreId = 18; // Drama
+      genreId = 18;
     } else if (keyword.contains('upbeat') || keyword.contains('happy') || keyword.contains('celebrat')) {
-      genreId = 35; // Comedy
+      genreId = 35;
     } else if (keyword.contains('atmospher') || keyword.contains('cinematic')) {
-      genreId = 878; // Sci-Fi
+      genreId = 878;
     }
 
     try {
@@ -49,7 +54,6 @@ class TmdbService {
         final data = jsonDecode(res.body);
         final results = data['results'] as List?;
         if (results != null && results.isNotEmpty) {
-          // Pick a mid-list title for variety instead of always #1
           final idx = results.length > 3 ? 2 : 0;
           return Movie.fromTmdb(results[idx] as Map<String, dynamic>);
         }
