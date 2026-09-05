@@ -9,14 +9,11 @@ import '../models/vibe_result.dart';
 class LastFmService {
   static const _base = 'https://ws.audioscrobbler.com/2.0/';
 
-  String? get _apiKey {
-    const fromDefine = String.fromEnvironment('LASTFM_API_KEY');
+    String? get _apiKey {
+    // Strictly read the key compiled directly from GitHub Secrets via dart-define
+    const fromDefine = const String.fromEnvironment('LASTFM_API_KEY');
     if (fromDefine.isNotEmpty) return fromDefine;
-    try {
-      return dotenv.env['LASTFM_API_KEY'];
-    } catch (_) {
-      return null;
-    }
+    return null;
   }
 
   Future<Track> findTrackForMood(VibeAnalysis analysis) async {
