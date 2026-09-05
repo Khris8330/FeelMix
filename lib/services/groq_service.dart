@@ -9,7 +9,7 @@ import '../models/vibe_result.dart';
 
 class GroqService {
   static const _baseUrl = 'https://api.groq.com/openai/v1/chat/completions';
-  static const _model = 'llama-3.1-8b-instant';
+  static const _model = 'openai/gpt-oss-20b';
 
   String? get _apiKey {
     // Strictly read the key compiled directly from GitHub Secrets via dart-define
