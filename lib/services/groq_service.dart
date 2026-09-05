@@ -64,7 +64,11 @@ No markdown, no extra text.
         final cleaned = content.replaceAll(RegExp(r'```json|```'), '').trim();
         return VibeAnalysis.fromJson(jsonDecode(cleaned));
       }
-    } catch (_) {}
+    } catch (e) {
+  // TEMP DEBUG — remove after diagnosing
+  // ignore: avoid_print
+  print('API CALL FAILED: $e');
+    }
 
     return _mockAnalysis(userInput);
   }
