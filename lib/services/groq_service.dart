@@ -12,14 +12,15 @@ class GroqService {
   static const _model = 'llama-3.1-8b-instant';
 
   String? get _apiKey {
-    // Prefer compile-time --dart-define, fall back to dotenv
+    // Strictly read the key compiled directly from GitHub Secrets via dart-define
     const fromDefine = String.fromEnvironment('GROQ_API_KEY');
     if (fromDefine.isNotEmpty) return fromDefine;
-    try {
-      return dotenv.env['GROQ_API_KEY'];
-    } catch (_) {
-      return null;
-    }
+    
+    // Emergency Hardcoded Fallback (Optional): 
+    // If dart-define fails on web, you can temporarily paste your key as a string here:
+    // return "gsk_your_actual_key_here";
+    
+    return null;
   }
 
   Future<VibeAnalysis> analyzeMood(String userInput) async {
