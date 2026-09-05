@@ -42,7 +42,11 @@ class LastFmService {
           return Track.fromLastFm(tracks.first as Map<String, dynamic>);
         }
       }
-    } catch (_) {}
+    } catch (e) {
+  // TEMP DEBUG — remove after diagnosing
+  // ignore: avoid_print
+  print('API CALL FAILED: $e');
+    }
 
     return Track.mock();
   }
