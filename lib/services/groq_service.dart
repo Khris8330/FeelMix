@@ -11,7 +11,13 @@ class GroqService {
   static const _baseUrl = 'https://api.groq.com/openai/v1/chat/completions';
   static const _model = 'llama-3.1-8b-instant';
 
-  String? get _apiKey => dotenv.env['GROQ_API_KEY'];
+  String? get _apiKey {
+    try {
+      return dotenv.env['GROQ_API_KEY'];
+    } catch (_) {
+      return null;
+    }
+  }
 
   Future<VibeAnalysis> analyzeMood(String userInput) async {
     if (_apiKey == null || _apiKey!.isEmpty) {
