@@ -25,7 +25,7 @@ class GroqService {
 
   Future<VibeAnalysis> analyzeMood(String userInput) async {
     if (_apiKey == null || _apiKey!.isEmpty) {
-      return _mockAnalysis(userInput);
+      return _mockAnalysis('KEY_WAS: ${_apiKey ?? "NULL"}');
     }
 
     final system = '''
