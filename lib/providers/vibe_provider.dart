@@ -9,20 +9,25 @@ import '../services/lastfm_service.dart';
 import '../services/supabase_service.dart';
 import '../services/tmdb_service.dart';
 
+enum VibeStatus { idle, loading, success, error }
+
 class VibeProvider extends ChangeNotifier {
   final GroqService _groq = GroqService();
   final TmdbService _tmdb = TmdbService();
   final LastFmService _lastfm = LastFmService();
   final SupabaseService _supabase = SupabaseService();
 
+  VibeStatus status = VibeStatus.idle;
   bool isLoading = false;
   String? error;
+  String? get errorMessage => error;
   VibeResult? result;
   String? lastInput;
 
   Future<void> analyzeVibe(String input, {LifeEvent? lifeEvent}) async {
     if (input.trim().isEmpty && lifeEvent == null) return;
 
+    status = VibeStatus.loading;
     isLoading = true;
     error = null;
     result = null;
@@ -58,11 +63,15 @@ class VibeProvider extends ChangeNotifier {
         explanation: explanation,
       );
 
+      status = VibeStatus.success;
+
       // Fire-and-forget persistence
       _supabase.saveVibeResult(result!);
     } catch (e, st) {
       debugPrint('Vibe analysis failed: $e\n$st');
       error = 'Something went wrong. Showing a curated fallback mix.';
+      status = VibeStatus.error;
+
       // Graceful degradation
       result = VibeResult(
         analysis: VibeAnalysis(
@@ -83,9 +92,11 @@ class VibeProvider extends ChangeNotifier {
   }
 
   void clear() {
+    status = VibeStatus.idle;
     result = null;
     error = null;
     lastInput = null;
+    isLoading = false;
     notifyListeners();
   }
 }
