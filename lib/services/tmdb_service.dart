@@ -57,7 +57,11 @@ class TmdbService {
           return Movie.fromTmdb(results[idx] as Map<String, dynamic>);
         }
       }
-    } catch (_) {}
+    } catch (e) {
+  // TEMP DEBUG — remove after diagnosing
+  // ignore: avoid_print
+  print('API CALL FAILED: $e');
+    }
 
     return Movie.mock();
   }
