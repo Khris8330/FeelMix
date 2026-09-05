@@ -10,6 +10,8 @@ class LastFmService {
   static const _base = 'https://ws.audioscrobbler.com/2.0/';
 
   String? get _apiKey {
+    const fromDefine = String.fromEnvironment('LASTFM_API_KEY');
+    if (fromDefine.isNotEmpty) return fromDefine;
     try {
       return dotenv.env['LASTFM_API_KEY'];
     } catch (_) {
