@@ -8,17 +8,21 @@ import 'app.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Completely optional .env loading — never crash on web or missing file
+  // Optional .env — ignore any failure (missing file is normal)
   try {
     await dotenv.load(fileName: '.env');
   } catch (e) {
-    debugPrint('dotenv load skipped: $e');
+    debugPrint('dotenv: $e');
   }
 
-  // Safely initialize Supabase only when both keys are present
+  // Optional Supabase — only init when keys exist
   try {
-    final supabaseUrl = dotenv.maybeGet('SUPABASE_URL') ?? '';
-    final supabaseAnonKey = dotenv.maybeGet('SUPABASE_ANON_KEY') ?? '';
+    String supabaseUrl = '';
+    String supabaseAnonKey = '';
+    try {
+      supabaseUrl = dotenv.env['SUPABASE_URL'] ?? '';
+      supabaseAnonKey = dotenv.env['SUPABASE_ANON_KEY'] ?? '';
+    } catch (_) {}
 
     if (supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty) {
       await Supabase.initialize(
