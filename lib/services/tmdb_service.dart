@@ -21,17 +21,28 @@ class TmdbService {
       return Movie.mock();
     }
 
-    final keyword = analysis.keywords.isNotEmpty
-        ? analysis.keywords.first.toLowerCase()
-        : 'drama';
+    final keywords = analysis.keywords.isNotEmpty
+        ? analysis.keywords.map((k) => k.toLowerCase()).toList()
+        : ['drama'];
+
+    bool matchesAny(List<String> terms) =>
+        keywords.any((k) => terms.any((t) => k.contains(t)));
 
     int? genreId;
-    if (keyword.contains('melanch') || keyword.contains('sad') || keyword.contains('heart')) {
-      genreId = 18;
-    } else if (keyword.contains('upbeat') || keyword.contains('happy') || keyword.contains('celebrat')) {
-      genreId = 35;
-    } else if (keyword.contains('atmospher') || keyword.contains('cinematic')) {
-      genreId = 878;
+    if (matchesAny(['horror', 'scary', 'fear', 'creepy', 'terrify'])) {
+      genreId = 27; // Horror
+    } else if (matchesAny(['thriller', 'suspense', 'tense', 'dread'])) {
+      genreId = 53; // Thriller
+    } else if (matchesAny(['melanch', 'sad', 'heart', 'grief'])) {
+      genreId = 18; // Drama
+    } else if (matchesAny(['upbeat', 'happy', 'celebrat', 'joy'])) {
+      genreId = 35; // Comedy
+    } else if (matchesAny(['romant', 'love'])) {
+      genreId = 10749; // Romance
+    } else if (matchesAny(['adventur', 'epic', 'journey'])) {
+      genreId = 12; // Adventure
+    } else if (matchesAny(['atmospher', 'cinematic', 'dreamy', 'surreal'])) {
+      genreId = 878; // Sci-Fi
     }
 
     try {
