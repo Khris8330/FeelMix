@@ -14,6 +14,15 @@ class VibeAnalysis {
     required this.valence,
   });
 
+  /// Convenience label used by the richer UI
+  String get primaryEmotion {
+    if (keywords.isNotEmpty) return keywords.first;
+    return moodSummary.split(' ').first;
+  }
+
+  /// Alias used by some widgets
+  String get explanation => moodSummary;
+
   factory VibeAnalysis.fromJson(Map<String, dynamic> json) {
     return VibeAnalysis(
       moodSummary: json['mood_summary'] as String? ?? 'A complex feeling',
