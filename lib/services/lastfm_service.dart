@@ -9,7 +9,13 @@ import '../models/vibe_result.dart';
 class LastFmService {
   static const _base = 'https://ws.audioscrobbler.com/2.0/';
 
-  String? get _apiKey => dotenv.env['LASTFM_API_KEY'];
+  String? get _apiKey {
+    try {
+      return dotenv.env['LASTFM_API_KEY'];
+    } catch (_) {
+      return null;
+    }
+  }
 
   Future<Track> findTrackForMood(VibeAnalysis analysis) async {
     if (_apiKey == null || _apiKey!.isEmpty) {
