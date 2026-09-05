@@ -51,6 +51,7 @@ flutter:
   uses-material-design: true
 
   assets:
+    - .env
     - assets/images/
 
   # NOTE: Syne / Plus Jakarta Sans / Inter are pulled via google_fonts at build
