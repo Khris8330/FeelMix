@@ -18,6 +18,12 @@ class _ShareCardState extends State<ShareCard> {
   final _screenshotController = ScreenshotController();
   bool _sharing = false;
 
+  static const _brandGrad = LinearGradient(
+    colors: [Color(0xFFFF3D8A), Color(0xFFFF7A59)],
+    begin: Alignment.bottomCenter,
+    end: Alignment.topCenter,
+  );
+
   Future<void> _share() async {
     setState(() => _sharing = true);
     try {
@@ -44,7 +50,7 @@ class _ShareCardState extends State<ShareCard> {
       padding: const EdgeInsets.all(24),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFF0B0B12), Color(0xFF1A1030)],
+          colors: [Color(0xFF0B0B12), Color(0xFF14121F)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -55,14 +61,59 @@ class _ShareCardState extends State<ShareCard> {
         children: [
           Row(
             children: [
+              // Official fm monogram mark
               Container(
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  gradient: AppColors.equalizerGradient,
+                  color: const Color(0xFF0A0E1F),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.graphic_eq_rounded, color: Colors.white, size: 20),
+                child: Stack(
+                  children: [
+                    Positioned(
+                      top: 5,
+                      right: 6,
+                      child: Container(
+                        width: 5,
+                        height: 5,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: _brandGrad,
+                        ),
+                      ),
+                    ),
+                    Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'fm',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              height: 1.0,
+                              letterSpacing: -0.8,
+                              foreground: Paint()
+                                ..shader = _brandGrad.createShader(
+                                  const Rect.fromLTWH(0, 0, 28, 16),
+                                ),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Container(
+                            width: 16,
+                            height: 2,
+                            decoration: BoxDecoration(
+                              gradient: _brandGrad,
+                              borderRadius: BorderRadius.circular(99),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(width: 10),
               const Text(
