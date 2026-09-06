@@ -18,6 +18,13 @@ jobs:
       - name: Generate platform folders
         run: flutter create .
 
+      - name: Apply custom app icons
+        run: |
+          mkdir -p web/icons
+          cp branding/icons/favicon.png web/favicon.png
+          cp branding/icons/Icon-192.png web/icons/Icon-192.png
+          cp branding/icons/Icon-512.png web/icons/Icon-512.png
+
       - name: Create .env from GitHub secrets
         run: |
           cat > .env << EOF
