@@ -24,6 +24,46 @@ class VibeProvider extends ChangeNotifier {
   VibeResult? result;
   String? lastInput;
 
+  /// True when the raw input contains language suggesting a serious personal
+  /// safety concern — shown as a supportive banner alongside the normal mix,
+  /// never as a replacement for it.
+  bool showSupportBanner = false;
+
+  // Keep this list to *patterns*, not exhaustive phrasing — it only needs to
+  // catch clearly serious language, not every possible way of expressing it.
+  // Expand as needed; false positives here are low-cost (just an extra banner).
+  static const _concernPatterns = [
+    'stalk',
+    'following me',
+    'watching me',
+    'someone is after me',
+    'abuse',
+    'abusive',
+    'being hurt',
+    'hurting me',
+    'threatened',
+    'threatening me',
+    'unsafe at home',
+    'assault',
+    'harass',
+    'suicid',
+    'kill myself',
+    'want to die',
+    'end my life',
+    'no reason to live',
+    'self harm',
+    'self-harm',
+    'hurt myself',
+    'cutting myself',
+    'rape',
+    'molest',
+  ];
+
+  bool _detectsSeriousConcern(String input) {
+    final lower = input.toLowerCase();
+    return _concernPatterns.any((p) => lower.contains(p));
+  }
+
   Future<void> analyzeVibe(String input, {LifeEvent? lifeEvent}) async {
     if (input.trim().isEmpty && lifeEvent == null) return;
 
@@ -32,6 +72,7 @@ class VibeProvider extends ChangeNotifier {
     error = null;
     result = null;
     lastInput = input.isNotEmpty ? input : lifeEvent?.label;
+    showSupportBanner = _detectsSeriousConcern(input);
     notifyListeners();
 
     try {
@@ -41,7 +82,6 @@ class VibeProvider extends ChangeNotifier {
 
       final analysis = await _groq.analyzeMood(prompt);
 
-      // Parallel fetch for speed
       final results = await Future.wait([
         _lastfm.findTrackForMood(analysis),
         _tmdb.findMovieForMood(analysis),
@@ -64,15 +104,12 @@ class VibeProvider extends ChangeNotifier {
       );
 
       status = VibeStatus.success;
-
-      // Fire-and-forget persistence
       _supabase.saveVibeResult(result!);
     } catch (e, st) {
       debugPrint('Vibe analysis failed: $e\n$st');
       error = 'Something went wrong. Showing a curated fallback mix.';
       status = VibeStatus.error;
 
-      // Graceful degradation
       result = VibeResult(
         analysis: VibeAnalysis(
           moodSummary: 'A reflective moment',
@@ -97,6 +134,7 @@ class VibeProvider extends ChangeNotifier {
     error = null;
     lastInput = null;
     isLoading = false;
+    showSupportBanner = false;
     notifyListeners();
   }
 }
