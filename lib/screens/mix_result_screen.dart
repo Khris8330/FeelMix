@@ -7,6 +7,7 @@ import '../widgets/explanation_bubble.dart';
 import '../widgets/movie_card.dart';
 import '../widgets/share_card.dart';
 import '../widgets/shimmer_card.dart';
+import '../widgets/support_banner.dart';
 import '../widgets/tactile_scale.dart';
 import '../widgets/track_card.dart';
 
@@ -118,6 +119,7 @@ class MixResultScreen extends StatelessWidget {
         final result = provider.result!;
         return ListView(
           children: [
+            if (provider.showSupportBanner) const SupportBanner(),
             ExplanationBubble(
               primaryEmotion: result.analysis.primaryEmotion,
               text: result.explanation,
