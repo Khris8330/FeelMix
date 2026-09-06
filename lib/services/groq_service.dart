@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
 import '../models/movie.dart';
@@ -15,17 +14,12 @@ class GroqService {
     // Strictly read the key compiled directly from GitHub Secrets via dart-define
     const fromDefine = String.fromEnvironment('GROQ_API_KEY');
     if (fromDefine.isNotEmpty) return fromDefine;
-    
-    // Emergency Hardcoded Fallback (Optional): 
-    // If dart-define fails on web, you can temporarily paste your key as a string here:
-    // return "gsk_your_actual_key_here";
-    
     return null;
   }
 
   Future<VibeAnalysis> analyzeMood(String userInput) async {
     if (_apiKey == null || _apiKey!.isEmpty) {
-      return _mockAnalysis('KEY_WAS: ${_apiKey ?? "NULL"}');
+      return _mockAnalysis(userInput);
     }
 
     final system = '''
@@ -45,7 +39,8 @@ No markdown, no extra text.
         {'role': 'user', 'content': userInput},
       ],
       'temperature': 0.4,
-      'max_tokens': 200,
+      'max_tokens': 400,
+      'reasoning_effort': 'low',
     };
 
     try {
@@ -65,9 +60,9 @@ No markdown, no extra text.
         return VibeAnalysis.fromJson(jsonDecode(cleaned));
       }
     } catch (e) {
-  // TEMP DEBUG — remove after diagnosing
-  // ignore: avoid_print
-  print('API CALL FAILED: $e');
+      // TEMP DEBUG — remove after diagnosing
+      // ignore: avoid_print
+      print('ANALYZE MOOD FAILED: $e');
     }
 
     return _mockAnalysis(userInput);
@@ -93,7 +88,8 @@ Keep it human, poetic, and under 40 words.
         {'role': 'user', 'content': prompt},
       ],
       'temperature': 0.7,
-      'max_tokens': 100,
+      'max_tokens': 300,
+      'reasoning_effort': 'low',
     };
 
     try {
@@ -108,9 +104,14 @@ Keep it human, poetic, and under 40 words.
 
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
-        return data['choices'][0]['message']['content'] as String;
+        final content = (data['choices'][0]['message']['content'] as String).trim();
+        if (content.isNotEmpty) return content;
       }
-    } catch (_) {}
+    } catch (e) {
+      // TEMP DEBUG — remove after diagnosing
+      // ignore: avoid_print
+      print('EXPLAIN MATCH FAILED: $e');
+    }
 
     return 'When the world feels heavy, "${track.name}" by ${track.artist} and ${movie.title} meet you exactly where you are.';
   }
