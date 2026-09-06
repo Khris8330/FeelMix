@@ -20,6 +20,12 @@ class VibeInputBar extends StatefulWidget {
 }
 
 class _VibeInputBarState extends State<VibeInputBar> {
+  static const _brandGrad = LinearGradient(
+    colors: [Color(0xFFFF3D8A), Color(0xFFFF7A59)],
+    begin: Alignment.bottomLeft,
+    end: Alignment.topRight,
+  );
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -64,7 +70,7 @@ class _VibeInputBarState extends State<VibeInputBar> {
                   width: 46,
                   height: 46,
                   decoration: const BoxDecoration(
-                    gradient: AppColors.equalizerGradient,
+                    gradient: _brandGrad,
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
