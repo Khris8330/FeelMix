@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { colors, radii, spacing } from '@/constants/theme';
 import { posts } from '@/data/mock';
 import { PostCard } from '@/components/PostCard';
+import { StoryRail } from '@/components/StoryRail';
 import { AppIcon } from '@/components/AppIcon';
 
 export default function HomeScreen() {
@@ -12,31 +13,38 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.logo}>FeelMix</Text>
+        <Text style={styles.logo}>
+          Feel<Text style={styles.logoAccent}>Mix</Text>
+        </Text>
         <View style={styles.headerActions}>
           <Pressable hitSlop={10} onPress={() => router.push('/mood')} style={styles.iconBtn}>
-            <AppIcon name="musical-notes" size={23} color={colors.text} />
+            <AppIcon name="musical-notes" size={22} color={colors.text} />
           </Pressable>
           <Pressable hitSlop={10} style={styles.iconBtn}>
-            <AppIcon name="notifications-outline" size={23} color={colors.text} />
+            <AppIcon name="notifications-outline" size={22} color={colors.text} />
+            <View style={styles.badgeDot} />
           </Pressable>
         </View>
-      </View>
-
-      <View style={styles.searchWrap}>
-        <AppIcon name="search" size={16} color={colors.textMuted} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search FeelMix"
-          placeholderTextColor={colors.textMuted}
-          editable={false}
-        />
       </View>
 
       <FlatList
         data={posts}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => <PostCard post={item} />}
+        ListHeaderComponent={
+          <View>
+            <StoryRail />
+            <View style={styles.searchWrap}>
+              <AppIcon name="search" size={16} color={colors.textMuted} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search FeelMix"
+                placeholderTextColor={colors.textMuted}
+                editable={false}
+              />
+            </View>
+          </View>
+        }
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
         ItemSeparatorComponent={() => <View style={styles.sep} />}
@@ -61,8 +69,11 @@ const styles = StyleSheet.create({
   logo: {
     fontSize: 28,
     fontWeight: '800',
-    color: colors.primary,
+    color: colors.text,
     letterSpacing: -0.8,
+  },
+  logoAccent: {
+    color: colors.primary,
   },
   headerActions: {
     flexDirection: 'row',
@@ -79,11 +90,23 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
+  badgeDot: {
+    position: 'absolute',
+    top: 10,
+    right: 11,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.primary,
+    borderWidth: 1.5,
+    borderColor: colors.surface,
+  },
   searchWrap: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     marginHorizontal: spacing.lg,
+    marginTop: spacing.sm,
     marginBottom: spacing.md,
     paddingHorizontal: spacing.lg,
     paddingVertical: 12,

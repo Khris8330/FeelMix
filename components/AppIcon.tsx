@@ -109,6 +109,15 @@ export function AppIcon({ name, size = 22, color = '#F5F5F7' }: Props) {
           <Path d="M8 8l4-4 4 4" />
         </Svg>
       );
+    case 'repost':
+      return (
+        <Svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round">
+          <Path d="M7 7h9.5a3 3 0 013 3v2" />
+          <Path d="M10 4L7 7l3 3" />
+          <Path d="M17 17H7.5a3 3 0 01-3-3v-2" />
+          <Path d="M14 20l3-3-3-3" />
+        </Svg>
+      );
     case 'ellipsis-horizontal':
       return (
         <Svg width={s} height={s} viewBox="0 0 24 24" fill={color}>

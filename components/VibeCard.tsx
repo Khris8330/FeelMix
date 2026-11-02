@@ -13,62 +13,47 @@ export function VibeCard({ vibe, compact }: Props) {
   return (
     <View style={[styles.card, compact && styles.cardCompact]}>
       <View style={styles.topRow}>
-        {vibe.coverUrl ? (
-          <Image source={{ uri: vibe.coverUrl }} style={styles.cover} />
-        ) : (
-          <LinearGradient
-            colors={['#2A1530', '#0B0B12']}
-            style={styles.cover}
-          />
-        )}
+        <View style={styles.coverWrap}>
+          {vibe.coverUrl ? (
+            <Image source={{ uri: vibe.coverUrl }} style={styles.cover} />
+          ) : (
+            <LinearGradient colors={['#2A1530', '#0B0B12']} style={styles.cover} />
+          )}
+        </View>
         <View style={styles.main}>
-          <View style={styles.badgeRow}>
-            <AppIcon name="heart" size={11} color={colors.primary} />
-            <Text style={styles.badge}>VIBE</Text>
+          <Text style={styles.badge}>{vibe.moodSubtitle || 'MY VIBE'}</Text>
+          <View style={styles.metaRow}>
+            <AppIcon name="musical-notes" size={13} color={colors.primary} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.metaValue} numberOfLines={1}>
+                {vibe.trackName}
+              </Text>
+              <Text style={styles.metaSub} numberOfLines={1}>
+                by {vibe.trackArtist}
+              </Text>
+            </View>
           </View>
-          <Text style={styles.title} numberOfLines={2}>
-            {vibe.moodTitle}
-          </Text>
-          {vibe.moodSubtitle ? (
-            <Text style={styles.subtitle} numberOfLines={2}>
-              {vibe.moodSubtitle}
-            </Text>
-          ) : null}
+          <View style={styles.metaRow}>
+            <AppIcon name="film-outline" size={13} color={colors.primary} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.metaValue} numberOfLines={1}>
+                {vibe.movieTitle}
+              </Text>
+              <Text style={styles.metaSub} numberOfLines={1}>
+                {vibe.movieYear}
+                {vibe.movieDirector ? ` · ${vibe.movieDirector}` : ''}
+              </Text>
+            </View>
+          </View>
         </View>
       </View>
-
-      <View style={styles.divider} />
-
-      <View style={styles.metaBlock}>
-        <View style={styles.metaRow}>
-          <View style={styles.metaIcon}>
-            <AppIcon name="musical-notes" size={14} color={colors.primary} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.metaLabel}>TRACK</Text>
-            <Text style={styles.metaValue} numberOfLines={1}>
-              {vibe.trackName}
-            </Text>
-            <Text style={styles.metaSub} numberOfLines={1}>
-              {vibe.trackArtist}
-            </Text>
-          </View>
-        </View>
-        <View style={styles.metaRow}>
-          <View style={styles.metaIcon}>
-            <AppIcon name="film-outline" size={14} color={colors.primary} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.metaLabel}>MOVIE</Text>
-            <Text style={styles.metaValue} numberOfLines={1}>
-              {vibe.movieTitle}
-            </Text>
-            <Text style={styles.metaSub} numberOfLines={1}>
-              {vibe.movieYear}
-              {vibe.movieDirector ? ` · ${vibe.movieDirector}` : ''}
-            </Text>
-          </View>
-        </View>
+      <View style={styles.progressTrack}>
+        <LinearGradient
+          colors={[colors.primary, colors.coral]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.progressFill}
+        />
       </View>
     </View>
   );
@@ -81,6 +66,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: colors.border,
+    padding: spacing.md,
   },
   cardCompact: {
     marginTop: spacing.sm,
@@ -88,78 +74,56 @@ const styles = StyleSheet.create({
   topRow: {
     flexDirection: 'row',
     gap: spacing.md,
-    padding: spacing.md,
+    alignItems: 'center',
+  },
+  coverWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: colors.primary,
   },
   cover: {
-    width: 88,
-    height: 88,
-    borderRadius: radii.md,
+    width: '100%',
+    height: '100%',
     backgroundColor: colors.surface,
   },
   main: {
     flex: 1,
-    justifyContent: 'center',
-    gap: 4,
-  },
-  badgeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
+    gap: 6,
   },
   badge: {
     color: colors.primary,
     fontSize: 10,
     fontWeight: '800',
-    letterSpacing: 1.2,
-  },
-  title: {
-    color: colors.text,
-    fontSize: 17,
-    fontWeight: '700',
-    letterSpacing: -0.2,
-  },
-  subtitle: {
-    color: colors.textSecondary,
-    fontSize: 12,
-    lineHeight: 16,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginHorizontal: spacing.md,
-  },
-  metaBlock: {
-    padding: spacing.md,
-    gap: spacing.md,
+    letterSpacing: 1.1,
   },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
-  },
-  metaIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,61,138,0.12)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  metaLabel: {
-    color: colors.primary,
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.8,
+    gap: 8,
   },
   metaValue: {
     color: colors.text,
-    fontSize: 14,
-    fontWeight: '600',
-    marginTop: 1,
+    fontSize: 13,
+    fontWeight: '700',
   },
   metaSub: {
     color: colors.textMuted,
-    fontSize: 12,
+    fontSize: 11,
     marginTop: 1,
+  },
+  progressTrack: {
+    marginTop: spacing.md,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    overflow: 'hidden',
+  },
+  progressFill: {
+    width: '62%',
+    height: '100%',
+    borderRadius: 2,
   },
 });
