@@ -24,6 +24,9 @@ jobs:
         env:
           CI: '1'
 
+      - name: Copy Vercel config into export
+        run: cp vercel.json dist/vercel.json
+
       - name: Deploy to Vercel
         uses: amondnet/vercel-action@v25
         with:
