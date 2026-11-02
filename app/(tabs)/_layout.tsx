@@ -1,13 +1,20 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { View, StyleSheet, Platform } from 'react-native';
+import { View, StyleSheet, Platform, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '@/constants/theme';
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
-  const bottomPad = Math.max(insets.bottom, Platform.OS === 'web' ? 12 : 8);
-  const barHeight = 56 + bottomPad;
+  const { width } = useWindowDimensions();
+  const isMobileWeb = Platform.OS === 'web' && width < 768;
+
+  // Mobile browsers often report insets.bottom as 0 while still covering the bar.
+  const bottomPad = Math.max(
+    insets.bottom,
+    isMobileWeb ? 22 : Platform.OS === 'web' ? 14 : 10
+  );
+  const barHeight = (isMobileWeb ? 62 : 56) + bottomPad;
 
   return (
     <Tabs
@@ -18,7 +25,7 @@ export default function TabsLayout() {
           borderTopColor: colors.border,
           borderTopWidth: 1,
           height: barHeight,
-          paddingTop: 6,
+          paddingTop: 8,
           paddingBottom: bottomPad,
           overflow: 'visible',
         },
@@ -26,6 +33,7 @@ export default function TabsLayout() {
         tabBarInactiveTintColor: colors.textMuted,
         tabBarLabelStyle: styles.tabLabel,
         tabBarItemStyle: styles.tabItem,
+        tabBarHideOnKeyboard: true,
       }}
     >
       <Tabs.Screen
@@ -105,6 +113,7 @@ const styles = StyleSheet.create({
   tabItem: {
     justifyContent: 'center',
     alignItems: 'center',
+    paddingVertical: 2,
   },
   createBtn: {
     width: 52,
@@ -113,7 +122,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: -18,
+    marginTop: -16,
     shadowColor: colors.primary,
     shadowOpacity: 0.45,
     shadowRadius: 14,
