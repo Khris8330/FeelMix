@@ -1,22 +1,16 @@
 import { View, Text, StyleSheet, FlatList, Pressable, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
 import { colors, radii, spacing } from '@/constants/theme';
 import { posts } from '@/data/mock';
 import { PostCard } from '@/components/PostCard';
 import { AppIcon } from '@/components/AppIcon';
 
 export default function HomeScreen() {
-  const router = useRouter();
-
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.logo}>FeelMix</Text>
         <View style={styles.headerActions}>
-          <Pressable hitSlop={10} onPress={() => router.push('/mood')} style={styles.iconBtn}>
-            <AppIcon name="sparkles-outline" size={20} color={colors.text} />
-          </Pressable>
           <Pressable hitSlop={10} style={styles.iconBtn}>
             <AppIcon name="notifications-outline" size={20} color={colors.text} />
           </Pressable>
