@@ -12,40 +12,62 @@ type Props = {
 export function VibeCard({ vibe, compact }: Props) {
   return (
     <View style={[styles.card, compact && styles.cardCompact]}>
-      {vibe.coverUrl ? (
-        <Image source={{ uri: vibe.coverUrl }} style={styles.cover} />
-      ) : (
-        <LinearGradient
-          colors={['#1A1030', '#0B0B12']}
-          style={styles.cover}
-        />
-      )}
-      <View style={styles.body}>
-        <View style={styles.badgeRow}>
-          <Ionicons name="heart" size={12} color={colors.primary} />
-          <Text style={styles.badge}>VIBE</Text>
-          <View style={styles.badgeLine} />
+      <View style={styles.topRow}>
+        {vibe.coverUrl ? (
+          <Image source={{ uri: vibe.coverUrl }} style={styles.cover} />
+        ) : (
+          <LinearGradient
+            colors={['#2A1530', '#0B0B12']}
+            style={styles.cover}
+          />
+        )}
+        <View style={styles.main}>
+          <View style={styles.badgeRow}>
+            <Ionicons name="heart" size={11} color={colors.primary} />
+            <Text style={styles.badge}>VIBE</Text>
+          </View>
+          <Text style={styles.title} numberOfLines={2}>
+            {vibe.moodTitle}
+          </Text>
+          {vibe.moodSubtitle ? (
+            <Text style={styles.subtitle} numberOfLines={2}>
+              {vibe.moodSubtitle}
+            </Text>
+          ) : null}
         </View>
-        <Text style={styles.title} numberOfLines={1}>
-          {vibe.moodTitle}
-        </Text>
-        {vibe.moodSubtitle ? (
-          <Text style={styles.subtitle} numberOfLines={2}>
-            {vibe.moodSubtitle}
-          </Text>
-        ) : null}
+      </View>
+
+      <View style={styles.divider} />
+
+      <View style={styles.metaBlock}>
         <View style={styles.metaRow}>
-          <Ionicons name="musical-notes" size={14} color={colors.primary} />
-          <Text style={styles.meta} numberOfLines={1}>
-            {vibe.trackName}  {vibe.trackArtist}
-          </Text>
+          <View style={styles.metaIcon}>
+            <Ionicons name="musical-notes" size={14} color={colors.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.metaLabel}>TRACK</Text>
+            <Text style={styles.metaValue} numberOfLines={1}>
+              {vibe.trackName}
+            </Text>
+            <Text style={styles.metaSub} numberOfLines={1}>
+              {vibe.trackArtist}
+            </Text>
+          </View>
         </View>
         <View style={styles.metaRow}>
-          <Ionicons name="film-outline" size={14} color={colors.primary} />
-          <Text style={styles.meta} numberOfLines={1}>
-            {vibe.movieTitle}  {vibe.movieYear}
-            {vibe.movieDirector ? `  ${vibe.movieDirector}` : ''}
-          </Text>
+          <View style={styles.metaIcon}>
+            <Ionicons name="film-outline" size={14} color={colors.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.metaLabel}>MOVIE</Text>
+            <Text style={styles.metaValue} numberOfLines={1}>
+              {vibe.movieTitle}
+            </Text>
+            <Text style={styles.metaSub} numberOfLines={1}>
+              {vibe.movieYear}
+              {vibe.movieDirector ? ` · ${vibe.movieDirector}` : ''}
+            </Text>
+          </View>
         </View>
       </View>
     </View>
@@ -61,52 +83,83 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   cardCompact: {
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
+  },
+  topRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    padding: spacing.md,
   },
   cover: {
-    width: '100%',
-    height: 120,
+    width: 88,
+    height: 88,
+    borderRadius: radii.md,
+    backgroundColor: colors.surface,
   },
-  body: {
-    padding: spacing.lg,
-    gap: spacing.sm,
+  main: {
+    flex: 1,
+    justifyContent: 'center',
+    gap: 4,
   },
   badgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
   },
   badge: {
     color: colors.primary,
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 1,
-  },
-  badgeLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: colors.primary,
-    opacity: 0.35,
-    marginLeft: 4,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.2,
   },
   title: {
     color: colors.text,
-    fontSize: 20,
+    fontSize: 17,
     fontWeight: '700',
+    letterSpacing: -0.2,
   },
   subtitle: {
     color: colors.textSecondary,
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginHorizontal: spacing.md,
+  },
+  metaBlock: {
+    padding: spacing.md,
+    gap: spacing.md,
   },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: spacing.md,
   },
-  meta: {
-    color: colors.textSecondary,
-    fontSize: 13,
-    flex: 1,
+  metaIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,61,138,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  metaLabel: {
+    color: colors.primary,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+  },
+  metaValue: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 1,
+  },
+  metaSub: {
+    color: colors.textMuted,
+    fontSize: 12,
+    marginTop: 1,
   },
 });

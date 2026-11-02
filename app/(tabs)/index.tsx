@@ -1,8 +1,8 @@
-import { View, Text, StyleSheet, FlatList, Pressable } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Pressable, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { colors, spacing } from '@/constants/theme';
+import { colors, radii, spacing } from '@/constants/theme';
 import { posts } from '@/data/mock';
 import { PostCard } from '@/components/PostCard';
 
@@ -14,16 +14,23 @@ export default function HomeScreen() {
       <View style={styles.header}>
         <Text style={styles.logo}>FeelMix</Text>
         <View style={styles.headerActions}>
-          <Pressable hitSlop={10} onPress={() => router.push('/mood')}>
+          <Pressable hitSlop={10} onPress={() => router.push('/mood')} style={styles.iconBtn}>
             <Ionicons name="sparkles-outline" size={22} color={colors.text} />
           </Pressable>
-          <Pressable hitSlop={10}>
-            <Ionicons name="search-outline" size={22} color={colors.text} />
-          </Pressable>
-          <Pressable hitSlop={10}>
+          <Pressable hitSlop={10} style={styles.iconBtn}>
             <Ionicons name="notifications-outline" size={22} color={colors.text} />
           </Pressable>
         </View>
+      </View>
+
+      <View style={styles.searchWrap}>
+        <Ionicons name="search" size={16} color={colors.textMuted} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search FeelMix"
+          placeholderTextColor={colors.textMuted}
+          editable={false}
+        />
       </View>
 
       <FlatList
@@ -32,6 +39,7 @@ export default function HomeScreen() {
         renderItem={({ item }) => <PostCard post={item} />}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
+        ItemSeparatorComponent={() => <View style={styles.sep} />}
       />
     </SafeAreaView>
   );
@@ -47,21 +55,54 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.sm,
   },
   logo: {
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: '800',
     color: colors.primary,
-    letterSpacing: -0.5,
+    letterSpacing: -0.8,
   },
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xl,
+    gap: spacing.sm,
+  },
+  iconBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  searchWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: 12,
+    borderRadius: radii.pill,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  searchInput: {
+    flex: 1,
+    color: colors.text,
+    fontSize: 14,
+    padding: 0,
   },
   list: {
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.xxxl,
+  },
+  sep: {
+    height: spacing.md,
   },
 });
