@@ -15,10 +15,10 @@ export default function HomeScreen() {
         <Text style={styles.logo}>FeelMix</Text>
         <View style={styles.headerActions}>
           <Pressable hitSlop={10} onPress={() => router.push('/mood')} style={styles.iconBtn}>
-            <AppIcon name="musical-notes" size={20} color={colors.text} />
+            <AppIcon name="musical-notes" size={23} color={colors.text} />
           </Pressable>
           <Pressable hitSlop={10} style={styles.iconBtn}>
-            <AppIcon name="notifications-outline" size={20} color={colors.text} />
+            <AppIcon name="notifications-outline" size={23} color={colors.text} />
           </Pressable>
         </View>
       </View>
@@ -70,9 +70,9 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   iconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.surface,
