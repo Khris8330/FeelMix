@@ -1,9 +1,17 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, Pressable, TextInput } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  Pressable,
+  TextInput,
+  Image,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { colors, radii, spacing } from '@/constants/theme';
-import { posts } from '@/data/mock';
+import { posts, currentUser } from '@/data/mock';
 import { PostCard } from '@/components/PostCard';
 import { StoryRail } from '@/components/StoryRail';
 import { MenuSheet } from '@/components/MenuSheet';
@@ -40,14 +48,19 @@ export default function HomeScreen() {
         ListHeaderComponent={
           <View>
             <StoryRail />
-            <View style={styles.searchWrap}>
-              <AppIcon name="search" size={16} color={colors.textMuted} />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search FeelMix"
-                placeholderTextColor={colors.textMuted}
-                editable={false}
-              />
+            <View style={styles.composerRow}>
+              <Pressable onPress={() => router.push('/(tabs)/profile')}>
+                <Image source={{ uri: currentUser.avatar }} style={styles.profileAvatar} />
+              </Pressable>
+              <View style={styles.searchWrap}>
+                <AppIcon name="search" size={16} color={colors.textMuted} />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search FeelMix"
+                  placeholderTextColor={colors.textMuted}
+                  editable={false}
+                />
+              </View>
             </View>
           </View>
         }
@@ -109,13 +122,27 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: colors.surface,
   },
-  searchWrap: {
+  composerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: spacing.md,
     marginHorizontal: spacing.lg,
     marginTop: spacing.sm,
     marginBottom: spacing.md,
+  },
+  profileAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.surface,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+  },
+  searchWrap: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
     paddingHorizontal: spacing.lg,
     paddingVertical: 12,
     borderRadius: radii.pill,
