@@ -1,10 +1,10 @@
 import { View, Text, StyleSheet, FlatList, Pressable, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { colors, radii, spacing } from '@/constants/theme';
 import { posts } from '@/data/mock';
 import { PostCard } from '@/components/PostCard';
+import { AppIcon } from '@/components/AppIcon';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -15,16 +15,16 @@ export default function HomeScreen() {
         <Text style={styles.logo}>FeelMix</Text>
         <View style={styles.headerActions}>
           <Pressable hitSlop={10} onPress={() => router.push('/mood')} style={styles.iconBtn}>
-            <Ionicons name="sparkles-outline" size={22} color={colors.text} />
+            <AppIcon name="sparkles-outline" size={20} color={colors.text} />
           </Pressable>
           <Pressable hitSlop={10} style={styles.iconBtn}>
-            <Ionicons name="notifications-outline" size={22} color={colors.text} />
+            <AppIcon name="notifications-outline" size={20} color={colors.text} />
           </Pressable>
         </View>
       </View>
 
       <View style={styles.searchWrap}>
-        <Ionicons name="search" size={16} color={colors.textMuted} />
+        <AppIcon name="search" size={16} color={colors.textMuted} />
         <TextInput
           style={styles.searchInput}
           placeholder="Search FeelMix"

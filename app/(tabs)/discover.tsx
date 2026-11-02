@@ -1,11 +1,11 @@
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, radii, spacing } from '@/constants/theme';
 import { lifeEvents, posts } from '@/data/mock';
 import { VibeCard } from '@/components/VibeCard';
+import { AppIcon } from '@/components/AppIcon';
 
 export default function DiscoverScreen() {
   const router = useRouter();
@@ -24,14 +24,14 @@ export default function DiscoverScreen() {
             end={{ x: 1, y: 1 }}
             style={styles.hero}
           >
-            <Ionicons name="sparkles" size={28} color={colors.white} />
+            <AppIcon name="sparkles" size={26} color={colors.white} />
             <View style={{ flex: 1 }}>
               <Text style={styles.heroTitle}>How are you feeling?</Text>
               <Text style={styles.heroSub}>
                 Turn your mood into music, movies, and moments.
               </Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.white} />
+            <AppIcon name="chevron-forward" size={20} color={colors.white} />
           </LinearGradient>
         </Pressable>
 

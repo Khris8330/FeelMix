@@ -6,11 +6,11 @@ import {
   Image,
   Pressable,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { colors, radii, spacing } from '@/constants/theme';
 import { getUser, type Post } from '@/data/mock';
 import { VibeCard } from './VibeCard';
+import { AppIcon } from './AppIcon';
 
 type Props = {
   post: Post;
@@ -41,14 +41,14 @@ export function PostCard({ post }: Props) {
             <View style={styles.nameRow}>
               <Text style={styles.name}>{user.name}</Text>
               {user.verified ? (
-                <Ionicons name="checkmark-circle" size={14} color={colors.primary} />
+                <AppIcon name="checkmark-circle" size={14} color={colors.primary} />
               ) : null}
             </View>
             <Text style={styles.meta}>{post.createdAt}</Text>
           </View>
         </Pressable>
         <Pressable hitSlop={12} style={styles.moreBtn}>
-          <Ionicons name="ellipsis-horizontal" size={18} color={colors.textMuted} />
+          <AppIcon name="ellipsis-horizontal" size={18} color={colors.textMuted} />
         </Pressable>
       </View>
 
@@ -63,7 +63,7 @@ export function PostCard({ post }: Props) {
       <View style={styles.stats}>
         <View style={styles.statLeft}>
           <View style={styles.likePill}>
-            <Ionicons name="heart" size={11} color={colors.white} />
+            <AppIcon name="heart" size={11} color={colors.white} />
           </View>
           <Text style={styles.statText}>{likeCount}</Text>
         </View>
@@ -74,7 +74,7 @@ export function PostCard({ post }: Props) {
 
       <View style={styles.actions}>
         <Pressable style={styles.action} onPress={toggleLike}>
-          <Ionicons
+          <AppIcon
             name={liked ? 'heart' : 'heart-outline'}
             size={20}
             color={liked ? colors.primary : colors.textSecondary}
@@ -84,11 +84,11 @@ export function PostCard({ post }: Props) {
           </Text>
         </Pressable>
         <Pressable style={styles.action}>
-          <Ionicons name="chatbubble-outline" size={18} color={colors.textSecondary} />
+          <AppIcon name="chatbubble-outline" size={18} color={colors.textSecondary} />
           <Text style={styles.actionLabel}>Comment</Text>
         </Pressable>
         <Pressable style={styles.action}>
-          <Ionicons name="arrow-redo-outline" size={20} color={colors.textSecondary} />
+          <AppIcon name="arrow-redo-outline" size={20} color={colors.textSecondary} />
           <Text style={styles.actionLabel}>Share</Text>
         </Pressable>
       </View>

@@ -1,15 +1,14 @@
 import { Tabs } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { View, StyleSheet, Platform, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '@/constants/theme';
+import { AppIcon } from '@/components/AppIcon';
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const isMobileWeb = Platform.OS === 'web' && width < 768;
 
-  // Mobile browsers often report insets.bottom as 0 while still covering the bar.
   const bottomPad = Math.max(
     insets.bottom,
     isMobileWeb ? 22 : Platform.OS === 'web' ? 14 : 10
@@ -41,11 +40,7 @@ export default function TabsLayout() {
         options={{
           title: 'Home',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons
-              name={focused ? 'home' : 'home-outline'}
-              size={22}
-              color={color}
-            />
+            <AppIcon name={focused ? 'home' : 'home-outline'} size={22} color={color} />
           ),
         }}
       />
@@ -54,7 +49,7 @@ export default function TabsLayout() {
         options={{
           title: 'Discover',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons
+            <AppIcon
               name={focused ? 'compass' : 'compass-outline'}
               size={22}
               color={color}
@@ -68,7 +63,7 @@ export default function TabsLayout() {
           title: 'Create',
           tabBarIcon: () => (
             <View style={styles.createBtn}>
-              <Ionicons name="add" size={28} color={colors.white} />
+              <AppIcon name="add" size={28} color={colors.white} />
             </View>
           ),
           tabBarLabel: () => null,
@@ -79,7 +74,7 @@ export default function TabsLayout() {
         options={{
           title: 'Friends',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons
+            <AppIcon
               name={focused ? 'people' : 'people-outline'}
               size={22}
               color={color}
@@ -92,7 +87,7 @@ export default function TabsLayout() {
         options={{
           title: 'Profile',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons
+            <AppIcon
               name={focused ? 'person' : 'person-outline'}
               size={22}
               color={color}

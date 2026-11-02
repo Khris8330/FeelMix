@@ -1,8 +1,8 @@
 import { View, Text, StyleSheet, Image } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, radii, spacing } from '@/constants/theme';
 import type { VibeEmbed } from '@/data/mock';
+import { AppIcon } from './AppIcon';
 
 type Props = {
   vibe: VibeEmbed;
@@ -23,7 +23,7 @@ export function VibeCard({ vibe, compact }: Props) {
         )}
         <View style={styles.main}>
           <View style={styles.badgeRow}>
-            <Ionicons name="heart" size={11} color={colors.primary} />
+            <AppIcon name="heart" size={11} color={colors.primary} />
             <Text style={styles.badge}>VIBE</Text>
           </View>
           <Text style={styles.title} numberOfLines={2}>
@@ -42,7 +42,7 @@ export function VibeCard({ vibe, compact }: Props) {
       <View style={styles.metaBlock}>
         <View style={styles.metaRow}>
           <View style={styles.metaIcon}>
-            <Ionicons name="musical-notes" size={14} color={colors.primary} />
+            <AppIcon name="musical-notes" size={14} color={colors.primary} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.metaLabel}>TRACK</Text>
@@ -56,7 +56,7 @@ export function VibeCard({ vibe, compact }: Props) {
         </View>
         <View style={styles.metaRow}>
           <View style={styles.metaIcon}>
-            <Ionicons name="film-outline" size={14} color={colors.primary} />
+            <AppIcon name="film-outline" size={14} color={colors.primary} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.metaLabel}>MOVIE</Text>
