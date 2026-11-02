@@ -31,11 +31,11 @@ const WEB_ICONS: Record<string, string> = {
   'share-outline': '↗',
   'image-outline': '🖼',
   'checkmark-circle': '✓',
-  chevron-forward: '›',
+  'chevron-forward': '›',
 };
 
 type Props = {
-  name: keyof typeof WEB_ICONS | string;
+  name: string;
   size?: number;
   color?: string;
   style?: StyleProp<TextStyle>;
