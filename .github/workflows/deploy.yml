@@ -10,47 +10,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Flutter
-        uses: subosito/flutter-action@v2
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          channel: 'stable'
+          node-version: '20'
+          cache: 'npm'
 
-      - name: Generate platform folders
-        run: flutter create .
+      - name: Install dependencies
+        run: npm install
 
-      - name: Apply custom app icons
-        run: |
-          mkdir -p web/icons
-          cp branding/icons/favicon.png web/favicon.png
-          cp branding/icons/Icon-192.png web/icons/Icon-192.png
-          cp branding/icons/Icon-512.png web/icons/Icon-512.png
-
-      - name: Create .env from GitHub secrets
-        run: |
-          cat > .env << EOF
-          GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}
-          TMDB_API_KEY=${{ secrets.TMDB_API_KEY }}
-          LASTFM_API_KEY=${{ secrets.LASTFM_API_KEY }}
-          SUPABASE_URL=${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
-          GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
-          EOF
-
-      - name: Get dependencies
-        run: flutter pub get
-
-      - name: Build Web Build
-        run: |
-          flutter build web --release \
-            --dart-define=GROQ_API_KEY=${{ secrets.GROQ_API_KEY }} \
-            --dart-define=TMDB_API_KEY=${{ secrets.TMDB_API_KEY }} \
-            --dart-define=LASTFM_API_KEY=${{ secrets.LASTFM_API_KEY }}
+      - name: Export Expo web
+        run: npx expo export -p web
+        env:
+          CI: '1'
 
       - name: Deploy to Vercel
-        uses: amondnet/vercel-action@v20
+        uses: amondnet/vercel-action@v25
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          working-directory: ./build/web
+          working-directory: ./dist
           vercel-args: '--prod'
