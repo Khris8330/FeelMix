@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { View, Text, StyleSheet, FlatList, Pressable, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -5,10 +6,12 @@ import { colors, radii, spacing } from '@/constants/theme';
 import { posts } from '@/data/mock';
 import { PostCard } from '@/components/PostCard';
 import { StoryRail } from '@/components/StoryRail';
+import { MenuSheet } from '@/components/MenuSheet';
 import { AppIcon } from '@/components/AppIcon';
 
 export default function HomeScreen() {
   const router = useRouter();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -23,6 +26,9 @@ export default function HomeScreen() {
           <Pressable hitSlop={10} style={styles.iconBtn}>
             <AppIcon name="notifications-outline" size={22} color={colors.text} />
             <View style={styles.badgeDot} />
+          </Pressable>
+          <Pressable hitSlop={10} onPress={() => setMenuOpen(true)} style={styles.iconBtn}>
+            <AppIcon name="menu" size={22} color={colors.text} />
           </Pressable>
         </View>
       </View>
@@ -49,6 +55,8 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
         ItemSeparatorComponent={() => <View style={styles.sep} />}
       />
+
+      <MenuSheet visible={menuOpen} onClose={() => setMenuOpen(false)} />
     </SafeAreaView>
   );
 }

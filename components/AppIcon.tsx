@@ -74,6 +74,14 @@ export function AppIcon({ name, size = 22, color = '#F5F5F7' }: Props) {
           <Path d="M10 18.5a2 2 0 004 0" />
         </Svg>
       );
+    case 'menu':
+      return (
+        <Svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.2} strokeLinecap="round">
+          <Line x1="4" y1="7" x2="20" y2="7" />
+          <Line x1="4" y1="12" x2="20" y2="12" />
+          <Line x1="4" y1="17" x2="20" y2="17" />
+        </Svg>
+      );
     case 'sparkles':
     case 'sparkles-outline':
       return (
@@ -186,6 +194,20 @@ export function AppIcon({ name, size = 22, color = '#F5F5F7' }: Props) {
           <Rect x="3.5" y="5" width="17" height="14" rx="1.5" />
           <Circle cx="9" cy="10" r="1.6" />
           <Path d="M3.5 16.5l4.5-4 3.5 3 3-2.5 6 3.5" />
+        </Svg>
+      );
+    case 'bookmark-outline':
+      return (
+        <Svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={stroke} strokeLinejoin="round">
+          <Path d="M7 4.5h10a1 1 0 011 1V20l-6-3.5L6 20V5.5a1 1 0 011-1z" />
+        </Svg>
+      );
+    case 'help-outline':
+      return (
+        <Svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round">
+          <Circle cx="12" cy="12" r="9" />
+          <Path d="M9.5 9.5a2.5 2.5 0 015 0c0 1.5-2.5 2-2.5 3.5" />
+          <Circle cx="12" cy="17" r="0.8" fill={color} stroke="none" />
         </Svg>
       );
     default:
