@@ -62,7 +62,7 @@ export default function EditProfileScreen() {
       mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.85,
+      quality: 0.55,
     });
 
     if (result.canceled || !result.assets?.[0]) return;
@@ -77,7 +77,12 @@ export default function EditProfileScreen() {
     setUploading(false);
 
     if (upError) {
-      setError(upError.message || 'Upload failed');
+      const msg = upError.message || 'Upload failed';
+      if (/maximum allowed size/i.test(msg)) {
+        setError('Photo is too large. Try a smaller image or crop tighter.');
+      } else {
+        setError(msg);
+      }
       return;
     }
     if (url) setAvatarUrl(url);
