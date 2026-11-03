@@ -42,8 +42,8 @@ export function MenuSheet({ visible, onClose }: Props) {
             ))}
             <Pressable
               style={styles.row}
-              onPress={() => {
-                signOut();
+              onPress={async () => {
+                await signOut();
                 onClose();
                 router.replace('/(auth)/login');
               }}

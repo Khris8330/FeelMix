@@ -1,34 +1,46 @@
 import { useEffect, useState } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
-import { useRouter } from 'expo-router';
-import { useRootNavigationState } from 'expo-router';
+import { useRouter, useRootNavigationState } from 'expo-router';
 import { colors } from '@/constants/theme';
-import { isAuthed } from '@/lib/session';
+import { getSession } from '@/lib/session';
 import LoginScreen from './(auth)/login';
 
 export default function Index() {
   const router = useRouter();
   const navState = useRootNavigationState();
-  const [ready, setReady] = useState(false);
+  const [checking, setChecking] = useState(true);
+  const [authed, setAuthed] = useState(false);
 
   useEffect(() => {
     if (!navState?.key) return;
-    setReady(true);
-    if (isAuthed()) {
-      router.replace('/(tabs)');
-    }
+
+    let active = true;
+    (async () => {
+      const session = await getSession();
+      if (!active) return;
+      if (session) {
+        setAuthed(true);
+        router.replace('/(tabs)');
+      } else {
+        setAuthed(false);
+      }
+      setChecking(false);
+    })();
+
+    return () => {
+      active = false;
+    };
   }, [navState?.key, router]);
 
-  // Not authed: render login inline so we never depend on a redirect route.
-  if (ready && !isAuthed()) {
-    return <LoginScreen />;
+  if (checking || authed) {
+    return (
+      <View style={styles.boot}>
+        <ActivityIndicator color={colors.primary} />
+      </View>
+    );
   }
 
-  return (
-    <View style={styles.boot}>
-      <ActivityIndicator color={colors.primary} />
-    </View>
-  );
+  return <LoginScreen />;
 }
 
 const styles = StyleSheet.create({

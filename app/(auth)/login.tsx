@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,11 +19,22 @@ export default function LoginScreen() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const onLogin = () => {
-    // V1 mock auth: accept any non-empty credentials
-    if (!email.trim() || !password.trim()) return;
-    signIn();
+  const onLogin = async () => {
+    setError(null);
+    if (!email.trim() || !password.trim()) {
+      setError('Enter email and password.');
+      return;
+    }
+    setLoading(true);
+    const { error: authError } = await signIn(email.trim(), password);
+    setLoading(false);
+    if (authError) {
+      setError(authError.message);
+      return;
+    }
     router.replace('/(tabs)');
   };
 
@@ -50,6 +62,7 @@ export default function LoginScreen() {
               placeholderTextColor={colors.textMuted}
               autoCapitalize="none"
               keyboardType="email-address"
+              autoComplete="email"
               value={email}
               onChangeText={setEmail}
             />
@@ -58,12 +71,23 @@ export default function LoginScreen() {
               placeholder="Password"
               placeholderTextColor={colors.textMuted}
               secureTextEntry
+              autoComplete="password"
               value={password}
               onChangeText={setPassword}
             />
 
-            <Pressable style={styles.loginBtn} onPress={onLogin}>
-              <Text style={styles.loginBtnText}>Log in</Text>
+            {error ? <Text style={styles.error}>{error}</Text> : null}
+
+            <Pressable
+              style={[styles.loginBtn, loading && styles.loginBtnDisabled]}
+              onPress={onLogin}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color={colors.white} />
+              ) : (
+                <Text style={styles.loginBtnText}>Log in</Text>
+              )}
             </Pressable>
 
             <Pressable style={styles.forgotWrap}>
@@ -129,12 +153,20 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 16,
   },
+  error: {
+    color: colors.danger,
+    fontSize: 13,
+    fontWeight: '600',
+  },
   loginBtn: {
     backgroundColor: colors.primary,
     borderRadius: radii.md,
     paddingVertical: 14,
     alignItems: 'center',
     marginTop: spacing.xs,
+  },
+  loginBtnDisabled: {
+    opacity: 0.7,
   },
   loginBtnText: {
     color: colors.white,
