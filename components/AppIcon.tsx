@@ -196,6 +196,14 @@ export function AppIcon({ name, size = 22, color = '#F5F5F7' }: Props) {
           <Path d="M3.5 16.5l4.5-4 3.5 3 3-2.5 6 3.5" />
         </Svg>
       );
+    case 'camera':
+    case 'camera-outline':
+      return (
+        <Svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={stroke} strokeLinejoin="round">
+          <Path d="M4.5 8.5h3l1.5-2h6l1.5 2h3A1.5 1.5 0 0121 10v8a1.5 1.5 0 01-1.5 1.5h-15A1.5 1.5 0 013 18v-8a1.5 1.5 0 011.5-1.5z" />
+          <Circle cx="12" cy="13.5" r="3.2" />
+        </Svg>
+      );
     case 'bookmark-outline':
       return (
         <Svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={stroke} strokeLinejoin="round">
