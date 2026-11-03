@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -6,47 +6,102 @@ import {
   Image,
   Pressable,
   ScrollView,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from 'expo-router';
 import { colors, radii, spacing } from '@/constants/theme';
-import { currentUser, getPostsByUser } from '@/data/mock';
-import { PostCard } from '@/components/PostCard';
+import { AppIcon } from '@/components/AppIcon';
+import { fetchMyProfile, initials, type Profile } from '@/lib/profile';
 
 type Tab = 'posts' | 'vibes' | 'about';
 
 export default function ProfileScreen() {
   const [tab, setTab] = useState<Tab>('posts');
-  const userPosts = getPostsByUser(currentUser.id);
-  const allMine = getPostsByUser(currentUser.id);
-  // Demo: show feed posts attributed to others as sample content on profile vibes
-  const vibePosts = allMine.filter((p) => p.vibe);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const load = useCallback(async () => {
+    const data = await fetchMyProfile();
+    setProfile(data);
+    setLoading(false);
+    setRefreshing(false);
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safe} edges={['top']}>
+        <View style={styles.boot}>
+          <ActivityIndicator color={colors.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <SafeAreaView style={styles.safe} edges={['top']}>
+        <View style={styles.boot}>
+          <Text style={styles.empty}>Could not load your profile.</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const name = profile.display_name || profile.handle;
+  const avatar = profile.avatar_url;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => {
+              setRefreshing(true);
+              load();
+            }}
+            tintColor={colors.primary}
+          />
+        }
+      >
         <View style={styles.topBar}>
           <Text style={styles.topTitle}>Profile</Text>
-          <Ionicons name="settings-outline" size={22} color={colors.text} />
+          <AppIcon name="settings-outline" size={22} color={colors.text} />
         </View>
 
         <View style={styles.hero}>
-          <Image source={{ uri: currentUser.avatar }} style={styles.avatar} />
-          <Text style={styles.name}>{currentUser.name}</Text>
-          <Text style={styles.handle}>@{currentUser.handle}</Text>
-          <Text style={styles.bio}>{currentUser.bio}</Text>
+          {avatar ? (
+            <Image source={{ uri: avatar }} style={styles.avatar} />
+          ) : (
+            <View style={[styles.avatar, styles.avatarFallback]}>
+              <Text style={styles.avatarInitials}>{initials(name)}</Text>
+            </View>
+          )}
+          <Text style={styles.name}>{name}</Text>
+          <Text style={styles.handle}>@{profile.handle}</Text>
+          {profile.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
 
           <View style={styles.stats}>
             <View style={styles.stat}>
-              <Text style={styles.statNum}>{currentUser.postsCount}</Text>
+              <Text style={styles.statNum}>{profile.posts_count}</Text>
               <Text style={styles.statLabel}>Posts</Text>
             </View>
             <View style={styles.stat}>
-              <Text style={styles.statNum}>{currentUser.followersCount}</Text>
+              <Text style={styles.statNum}>{profile.followers_count}</Text>
               <Text style={styles.statLabel}>Friends</Text>
             </View>
             <View style={styles.stat}>
-              <Text style={styles.statNum}>{currentUser.vibesCount}</Text>
+              <Text style={styles.statNum}>{profile.vibes_count}</Text>
               <Text style={styles.statLabel}>Vibes</Text>
             </View>
           </View>
@@ -68,28 +123,24 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.tabBody}>
-          {tab === 'posts' &&
-            (userPosts.length ? (
-              userPosts.map((p) => <PostCard key={p.id} post={p} />)
-            ) : (
-              <Text style={styles.empty}>
-                Your posts will show up here. Share something from Create.
-              </Text>
-            ))}
-          {tab === 'vibes' &&
-            (vibePosts.length ? (
-              vibePosts.map((p) => <PostCard key={p.id} post={p} />)
-            ) : (
-              <Text style={styles.empty}>
-                Shared vibes will appear here after you post a mood mix.
-              </Text>
-            ))}
+          {tab === 'posts' && (
+            <Text style={styles.empty}>
+              Your posts will show up here. Share something from Create.
+            </Text>
+          )}
+          {tab === 'vibes' && (
+            <Text style={styles.empty}>
+              Shared vibes will appear here after you post a mood mix.
+            </Text>
+          )}
           {tab === 'about' && (
             <View style={styles.about}>
               <Text style={styles.aboutLabel}>Bio</Text>
-              <Text style={styles.aboutValue}>{currentUser.bio}</Text>
+              <Text style={styles.aboutValue}>
+                {profile.bio || 'No bio yet.'}
+              </Text>
               <Text style={styles.aboutLabel}>Handle</Text>
-              <Text style={styles.aboutValue}>@{currentUser.handle}</Text>
+              <Text style={styles.aboutValue}>@{profile.handle}</Text>
             </View>
           )}
         </View>
@@ -100,6 +151,11 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
+  boot: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   topBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -120,6 +176,16 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.primary,
     marginBottom: spacing.md,
+    backgroundColor: colors.surface,
+  },
+  avatarFallback: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarInitials: {
+    color: colors.text,
+    fontSize: 28,
+    fontWeight: '800',
   },
   name: { color: colors.text, fontSize: 22, fontWeight: '800' },
   handle: { color: colors.textMuted, fontSize: 14, marginTop: 4 },
