@@ -10,7 +10,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { colors, radii, spacing } from '@/constants/theme';
 import { AppIcon } from '@/components/AppIcon';
 import { fetchMyProfile, initials, type Profile } from '@/lib/profile';
@@ -18,6 +18,7 @@ import { fetchMyProfile, initials, type Profile } from '@/lib/profile';
 type Tab = 'posts' | 'vibes' | 'about';
 
 export default function ProfileScreen() {
+  const router = useRouter();
   const [tab, setTab] = useState<Tab>('posts');
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -106,7 +107,10 @@ export default function ProfileScreen() {
             </View>
           </View>
 
-          <Pressable style={styles.editBtn}>
+          <Pressable
+            style={styles.editBtn}
+            onPress={() => router.push('/edit-profile')}
+          >
             <Text style={styles.editText}>Edit profile</Text>
           </Pressable>
         </View>

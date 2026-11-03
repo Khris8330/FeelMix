@@ -30,6 +30,78 @@ export async function fetchMyProfile(): Promise<Profile | null> {
   return data as Profile;
 }
 
+export async function updateMyProfile(patch: {
+  display_name?: string;
+  bio?: string | null;
+  handle?: string;
+  avatar_url?: string | null;
+}) {
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return { error: new Error('Not signed in') };
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .update(patch)
+    .eq('id', auth.user.id)
+    .select(
+      'id, handle, display_name, avatar_url, bio, status_emoji, is_verified, posts_count, followers_count, following_count, vibes_count'
+    )
+    .single();
+
+  return { data: data as Profile | null, error };
+}
+
+/** Upload avatar image (File on web, or { uri, type, name } on native). */
+export async function uploadAvatar(file: {
+  uri: string;
+  type?: string;
+  name?: string;
+  blob?: Blob;
+}) {
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return { error: new Error('Not signed in'), url: null };
+
+  const userId = auth.user.id;
+  const mime = file.type || 'image/jpeg';
+  const ext = mime.includes('png')
+    ? 'png'
+    : mime.includes('webp')
+      ? 'webp'
+      : mime.includes('gif')
+        ? 'gif'
+        : 'jpg';
+  const path = `${userId}/avatar.${ext}`;
+
+  let body: Blob | ArrayBuffer;
+  if (file.blob) {
+    body = file.blob;
+  } else if (file.uri.startsWith('blob:') || file.uri.startsWith('data:')) {
+    const res = await fetch(file.uri);
+    body = await res.blob();
+  } else {
+    const res = await fetch(file.uri);
+    body = await res.blob();
+  }
+
+  const { error: upErr } = await supabase.storage.from('avatars').upload(path, body, {
+    upsert: true,
+    contentType: mime,
+  });
+
+  if (upErr) return { error: upErr, url: null };
+
+  const { data: pub } = supabase.storage.from('avatars').getPublicUrl(path);
+  const url = `${pub.publicUrl}?t=${Date.now()}`;
+
+  const { error: dbErr } = await supabase
+    .from('profiles')
+    .update({ avatar_url: url })
+    .eq('id', userId);
+
+  if (dbErr) return { error: dbErr, url: null };
+  return { error: null, url };
+}
+
 export function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return '?';
