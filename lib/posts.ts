@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import type { VibeEmbed } from '@/data/mock';
 
 export type FeedAuthor = {
   id: string;
@@ -171,6 +172,58 @@ export async function createPost(body: string, imageUrl?: string | null) {
     .single();
 
   return { error, post: data };
+}
+
+export async function createPostWithVibe(
+  body: string,
+  vibe: VibeEmbed,
+  lifeEventKey?: string | null
+) {
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return { error: new Error('Not signed in'), post: null };
+
+  const { data: post, error: postError } = await supabase
+    .from('posts')
+    .insert({
+      author_id: auth.user.id,
+      body: body.trim(),
+      visibility: 'public',
+    })
+    .select('id')
+    .single();
+
+  if (postError || !post) return { error: postError || new Error('Post failed'), post: null };
+
+  const { error: vibeError } = await supabase.from('vibes').insert({
+    post_id: post.id,
+    mood_title: vibe.moodTitle,
+    mood_subtitle: vibe.moodSubtitle || null,
+    track_name: vibe.trackName,
+    track_artist: vibe.trackArtist,
+    movie_title: vibe.movieTitle,
+    movie_year: vibe.movieYear || null,
+    movie_director: vibe.movieDirector || null,
+    cover_url: vibe.coverUrl || null,
+  });
+
+  if (vibeError) return { error: vibeError, post };
+
+  await supabase.from('mood_sessions').insert({
+    user_id: auth.user.id,
+    prompt_text: body.trim(),
+    life_event_key: lifeEventKey || null,
+    result_track_json: {
+      name: vibe.trackName,
+      artist: vibe.trackArtist,
+    },
+    result_movie_json: {
+      title: vibe.movieTitle,
+      year: vibe.movieYear,
+      director: vibe.movieDirector,
+    },
+  });
+
+  return { error: null, post };
 }
 
 export async function toggleLike(postId: string, currentlyLiked: boolean) {

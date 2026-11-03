@@ -33,6 +33,11 @@ export default function RootLayout() {
             name="edit-profile"
             options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
           />
+          <Stack.Screen
+            name="add-story"
+            options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+          />
+          <Stack.Screen name="story/[id]" />
           <Stack.Screen name="user/[id]" />
         </Stack>
       </SafeAreaProvider>

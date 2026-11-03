@@ -7,6 +7,7 @@ import {
   Pressable,
   ScrollView,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -15,6 +16,7 @@ import { colors, radii, spacing } from '@/constants/theme';
 import { lifeEvents } from '@/data/mock';
 import { VibeCard } from '@/components/VibeCard';
 import { AppIcon } from '@/components/AppIcon';
+import { createPostWithVibe } from '@/lib/posts';
 import type { VibeEmbed } from '@/data/mock';
 
 const MOCK_RESULT: VibeEmbed = {
@@ -33,6 +35,7 @@ export default function MoodScreen() {
   const [selected, setSelected] = useState<string | null>('heartbreak');
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const [result, setResult] = useState<VibeEmbed | null>(null);
 
   const run = () => {
@@ -42,6 +45,21 @@ export default function MoodScreen() {
       setResult(MOCK_RESULT);
       setLoading(false);
     }, 900);
+  };
+
+  const shareToFeed = async () => {
+    if (!result) return;
+    setSharing(true);
+    const body =
+      text.trim() ||
+      `My vibe: ${result.moodTitle} · ${result.trackName} and ${result.movieTitle}`;
+    const { error } = await createPostWithVibe(body, result, selected);
+    setSharing(false);
+    if (error) {
+      Alert.alert('Could not share', error.message);
+      return;
+    }
+    router.replace('/(tabs)');
   };
 
   return (
@@ -115,13 +133,18 @@ export default function MoodScreen() {
               the hope that comes after.
             </Text>
             <Pressable
-              style={styles.shareBtn}
-              onPress={() => {
-                router.replace('/(tabs)');
-              }}
+              style={[styles.shareBtn, sharing && { opacity: 0.7 }]}
+              onPress={shareToFeed}
+              disabled={sharing}
             >
-              <AppIcon name="share-outline" size={18} color={colors.white} />
-              <Text style={styles.shareText}>Share to feed</Text>
+              {sharing ? (
+                <ActivityIndicator color={colors.white} />
+              ) : (
+                <>
+                  <AppIcon name="share-outline" size={18} color={colors.white} />
+                  <Text style={styles.shareText}>Share to feed</Text>
+                </>
+              )}
             </Pressable>
             <Text style={styles.privateNote}>
               Your vibe stays private until you share.
