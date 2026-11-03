@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -8,26 +8,43 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Image,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { colors, radii, spacing } from '@/constants/theme';
-import { currentUser } from '@/data/mock';
+import { AppIcon } from '@/components/AppIcon';
+import { fetchMyProfile, initials, type Profile } from '@/lib/profile';
+import { createPost } from '@/lib/posts';
 
 export default function CreateScreen() {
   const router = useRouter();
   const [body, setBody] = useState('');
+  const [me, setMe] = useState<Profile | null>(null);
+  const [posting, setPosting] = useState(false);
 
-  const publish = () => {
+  useEffect(() => {
+    fetchMyProfile().then(setMe);
+  }, []);
+
+  const publish = async () => {
     if (!body.trim()) {
       Alert.alert('Add something', 'Write a thought before posting.');
       return;
     }
-    Alert.alert('Posted', 'Your post is live on the feed (demo).');
+    setPosting(true);
+    const { error } = await createPost(body);
+    setPosting(false);
+    if (error) {
+      Alert.alert('Could not post', error.message);
+      return;
+    }
     setBody('');
     router.replace('/(tabs)');
   };
+
+  const name = me?.display_name || me?.handle || 'You';
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -36,23 +53,33 @@ export default function CreateScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()}>
+          <Pressable onPress={() => router.back()} disabled={posting}>
             <Text style={styles.cancel}>Cancel</Text>
           </Pressable>
           <Text style={styles.title}>Create post</Text>
-          <Pressable onPress={publish} style={styles.postBtn}>
-            <Text style={styles.postBtnText}>Post</Text>
+          <Pressable
+            onPress={publish}
+            style={[styles.postBtn, posting && styles.postBtnDisabled]}
+            disabled={posting}
+          >
+            {posting ? (
+              <ActivityIndicator color={colors.white} size="small" />
+            ) : (
+              <Text style={styles.postBtnText}>Post</Text>
+            )}
           </Pressable>
         </View>
 
         <View style={styles.composer}>
           <View style={styles.userRow}>
-            <View style={styles.avatarPlaceholder}>
-              <Text style={styles.avatarLetter}>
-                {currentUser.name.charAt(0)}
-              </Text>
-            </View>
-            <Text style={styles.name}>{currentUser.name}</Text>
+            {me?.avatar_url ? (
+              <Image source={{ uri: me.avatar_url }} style={styles.avatar} />
+            ) : (
+              <View style={[styles.avatar, styles.avatarFallback]}>
+                <Text style={styles.avatarLetter}>{initials(name)}</Text>
+              </View>
+            )}
+            <Text style={styles.name}>{name}</Text>
           </View>
           <TextInput
             style={styles.input}
@@ -62,16 +89,17 @@ export default function CreateScreen() {
             value={body}
             onChangeText={setBody}
             autoFocus
+            editable={!posting}
           />
         </View>
 
         <View style={styles.tools}>
           <Pressable style={styles.tool} onPress={() => router.push('/mood')}>
-            <Ionicons name="sparkles" size={20} color={colors.primary} />
+            <AppIcon name="sparkles" size={20} color={colors.primary} />
             <Text style={styles.toolLabel}>Add a vibe</Text>
           </Pressable>
           <Pressable style={styles.tool}>
-            <Ionicons name="image-outline" size={20} color={colors.textSecondary} />
+            <AppIcon name="image-outline" size={20} color={colors.textSecondary} />
             <Text style={styles.toolLabel}>Photo</Text>
           </Pressable>
         </View>
@@ -98,7 +126,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: radii.pill,
+    minWidth: 64,
+    alignItems: 'center',
   },
+  postBtnDisabled: { opacity: 0.7 },
   postBtnText: { color: colors.white, fontWeight: '700', fontSize: 14 },
   composer: {
     padding: spacing.xl,
@@ -110,15 +141,17 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     marginBottom: spacing.lg,
   },
-  avatarPlaceholder: {
+  avatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
     backgroundColor: colors.surfaceElevated,
+  },
+  avatarFallback: {
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarLetter: { color: colors.primary, fontWeight: '700', fontSize: 16 },
+  avatarLetter: { color: colors.primary, fontWeight: '700', fontSize: 14 },
   name: { color: colors.text, fontWeight: '700', fontSize: 15 },
   input: {
     color: colors.text,

@@ -2,33 +2,63 @@ import { useState } from 'react';
 import { View, Text, StyleSheet, Image, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { colors, radii, spacing } from '@/constants/theme';
-import { getUser, type Post } from '@/data/mock';
+import {
+  formatRelativeTime,
+  toggleLike,
+  toggleRepost,
+  type FeedPost,
+} from '@/lib/posts';
+import { initials } from '@/lib/profile';
 import { VibeCard } from './VibeCard';
 import { AppIcon } from './AppIcon';
 
 type Props = {
-  post: Post;
+  post: FeedPost;
 };
 
 export function PostCard({ post }: Props) {
   const router = useRouter();
-  const user = getUser(post.userId);
-  const [liked, setLiked] = useState(post.likedByMe);
-  const [likeCount, setLikeCount] = useState(post.likes);
-  const [reposted, setReposted] = useState(!!post.repostedByMe);
-  const [repostCount, setRepostCount] = useState(post.reposts);
+  const user = post.author;
+  const [liked, setLiked] = useState(post.liked_by_me);
+  const [likeCount, setLikeCount] = useState(post.likes_count);
+  const [reposted, setReposted] = useState(post.reposted_by_me);
+  const [repostCount, setRepostCount] = useState(post.reposts_count);
 
-  if (!user) return null;
-
-  const toggleLike = () => {
-    setLiked((v) => !v);
-    setLikeCount((c) => (liked ? c - 1 : c + 1));
+  const onLike = async () => {
+    const next = !liked;
+    setLiked(next);
+    setLikeCount((c) => (next ? c + 1 : Math.max(0, c - 1)));
+    const { error } = await toggleLike(post.id, liked);
+    if (error) {
+      setLiked(liked);
+      setLikeCount(post.likes_count);
+    }
   };
 
-  const toggleRepost = () => {
-    setReposted((v) => !v);
-    setRepostCount((c) => (reposted ? c - 1 : c + 1));
+  const onRepost = async () => {
+    const next = !reposted;
+    setReposted(next);
+    setRepostCount((c) => (next ? c + 1 : Math.max(0, c - 1)));
+    const { error } = await toggleRepost(post.id, reposted);
+    if (error) {
+      setReposted(reposted);
+      setRepostCount(post.reposts_count);
+    }
   };
+
+  const name = user.display_name || user.handle;
+  const vibe = post.vibe
+    ? {
+        moodTitle: post.vibe.mood_title,
+        moodSubtitle: post.vibe.mood_subtitle || undefined,
+        trackName: post.vibe.track_name,
+        trackArtist: post.vibe.track_artist,
+        movieTitle: post.vibe.movie_title,
+        movieYear: post.vibe.movie_year || '',
+        movieDirector: post.vibe.movie_director || undefined,
+        coverUrl: post.vibe.cover_url || undefined,
+      }
+    : null;
 
   return (
     <View style={styles.card}>
@@ -37,18 +67,24 @@ export function PostCard({ post }: Props) {
           style={styles.userRow}
           onPress={() => router.push(`/user/${user.id}`)}
         >
-          <Image source={{ uri: user.avatar }} style={styles.avatar} />
+          {user.avatar_url ? (
+            <Image source={{ uri: user.avatar_url }} style={styles.avatar} />
+          ) : (
+            <View style={[styles.avatar, styles.avatarFallback]}>
+              <Text style={styles.avatarInitials}>{initials(name)}</Text>
+            </View>
+          )}
           <View style={styles.userMeta}>
             <View style={styles.nameRow}>
-              <Text style={styles.name}>{user.name}</Text>
-              {user.statusEmoji ? (
-                <Text style={styles.statusEmoji}>{user.statusEmoji}</Text>
+              <Text style={styles.name}>{name}</Text>
+              {user.status_emoji ? (
+                <Text style={styles.statusEmoji}>{user.status_emoji}</Text>
               ) : null}
-              {user.verified ? (
+              {user.is_verified ? (
                 <AppIcon name="checkmark-circle" size={14} color={colors.primary} />
               ) : null}
             </View>
-            <Text style={styles.meta}>{post.createdAt} · 🌐</Text>
+            <Text style={styles.meta}>{formatRelativeTime(post.created_at)} · 🌐</Text>
           </View>
         </Pressable>
         <Pressable hitSlop={12} style={styles.moreBtn}>
@@ -58,11 +94,11 @@ export function PostCard({ post }: Props) {
 
       <Text style={styles.body}>{post.body}</Text>
 
-      {post.imageUrl ? (
-        <Image source={{ uri: post.imageUrl }} style={styles.image} />
+      {post.image_url ? (
+        <Image source={{ uri: post.image_url }} style={styles.image} />
       ) : null}
 
-      {post.vibe ? <VibeCard vibe={post.vibe} compact /> : null}
+      {vibe ? <VibeCard vibe={vibe} compact /> : null}
 
       <View style={styles.stats}>
         <View style={styles.statLeft}>
@@ -80,12 +116,12 @@ export function PostCard({ post }: Props) {
           <Text style={styles.statText}>{likeCount}</Text>
         </View>
         <Text style={styles.statText}>
-          {post.comments} comments · {repostCount} reposts
+          {post.comments_count} comments · {repostCount} reposts
         </Text>
       </View>
 
       <View style={styles.actions}>
-        <Pressable style={styles.action} onPress={toggleLike}>
+        <Pressable style={styles.action} onPress={onLike}>
           <AppIcon
             name={liked ? 'heart' : 'heart-outline'}
             size={18}
@@ -97,7 +133,7 @@ export function PostCard({ post }: Props) {
           <AppIcon name="chatbubble-outline" size={17} color={colors.textSecondary} />
           <Text style={styles.actionLabel}>Comment</Text>
         </Pressable>
-        <Pressable style={styles.action} onPress={toggleRepost}>
+        <Pressable style={styles.action} onPress={onRepost}>
           <AppIcon
             name="repost"
             size={18}
@@ -141,6 +177,15 @@ const styles = StyleSheet.create({
     height: 42,
     borderRadius: 21,
     backgroundColor: colors.surfaceElevated,
+  },
+  avatarFallback: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarInitials: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '800',
   },
   userMeta: { flex: 1 },
   nameRow: {

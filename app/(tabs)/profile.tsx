@@ -13,7 +13,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { colors, radii, spacing } from '@/constants/theme';
 import { AppIcon } from '@/components/AppIcon';
+import { PostCard } from '@/components/PostCard';
 import { fetchMyProfile, initials, type Profile } from '@/lib/profile';
+import { fetchPostsByAuthor, type FeedPost } from '@/lib/posts';
 
 type Tab = 'posts' | 'vibes' | 'about';
 
@@ -21,12 +23,19 @@ export default function ProfileScreen() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>('posts');
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [posts, setPosts] = useState<FeedPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
-    const data = await fetchMyProfile();
-    setProfile(data);
+    const p = await fetchMyProfile();
+    setProfile(p);
+    if (p) {
+      const list = await fetchPostsByAuthor(p.id);
+      setPosts(list);
+    } else {
+      setPosts([]);
+    }
     setLoading(false);
     setRefreshing(false);
   }, []);
@@ -59,6 +68,7 @@ export default function ProfileScreen() {
 
   const name = profile.display_name || profile.handle;
   const avatar = profile.avatar_url;
+  const vibePosts = posts.filter((p) => p.vibe);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -127,16 +137,30 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.tabBody}>
-          {tab === 'posts' && (
-            <Text style={styles.empty}>
-              Your posts will show up here. Share something from Create.
-            </Text>
-          )}
-          {tab === 'vibes' && (
-            <Text style={styles.empty}>
-              Shared vibes will appear here after you post a mood mix.
-            </Text>
-          )}
+          {tab === 'posts' &&
+            (posts.length ? (
+              posts.map((p) => (
+                <View key={p.id} style={styles.postWrap}>
+                  <PostCard post={p} />
+                </View>
+              ))
+            ) : (
+              <Text style={styles.empty}>
+                Your posts will show up here. Share something from Create.
+              </Text>
+            ))}
+          {tab === 'vibes' &&
+            (vibePosts.length ? (
+              vibePosts.map((p) => (
+                <View key={p.id} style={styles.postWrap}>
+                  <PostCard post={p} />
+                </View>
+              ))
+            ) : (
+              <Text style={styles.empty}>
+                Shared vibes will appear here after you post a mood mix.
+              </Text>
+            ))}
           {tab === 'about' && (
             <View style={styles.about}>
               <Text style={styles.aboutLabel}>Bio</Text>
@@ -243,6 +267,7 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     paddingBottom: spacing.xxxl,
   },
+  postWrap: { marginBottom: spacing.md },
   empty: {
     color: colors.textMuted,
     fontSize: 14,

@@ -7,26 +7,39 @@ import {
   Pressable,
   TextInput,
   Image,
+  RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { colors, radii, spacing } from '@/constants/theme';
-import { posts } from '@/data/mock';
 import { PostCard } from '@/components/PostCard';
 import { StoryRail } from '@/components/StoryRail';
 import { MenuSheet } from '@/components/MenuSheet';
 import { AppIcon } from '@/components/AppIcon';
 import { fetchMyProfile, initials, type Profile } from '@/lib/profile';
+import { fetchFeedPosts, type FeedPost } from '@/lib/posts';
 
 export default function HomeScreen() {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [me, setMe] = useState<Profile | null>(null);
+  const [feed, setFeed] = useState<FeedPost[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const load = useCallback(async () => {
+    const [profile, posts] = await Promise.all([fetchMyProfile(), fetchFeedPosts()]);
+    setMe(profile);
+    setFeed(posts);
+    setLoading(false);
+    setRefreshing(false);
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
-      fetchMyProfile().then(setMe);
-    }, [])
+      load();
+    }, [load])
   );
 
   const name = me?.display_name || me?.handle || '';
@@ -51,39 +64,58 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      <FlatList
-        data={posts}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <PostCard post={item} />}
-        ListHeaderComponent={
-          <View>
-            <StoryRail />
-            <View style={styles.composerRow}>
-              <Pressable onPress={() => router.push('/(tabs)/profile')}>
-                {me?.avatar_url ? (
-                  <Image source={{ uri: me.avatar_url }} style={styles.profileAvatar} />
-                ) : (
-                  <View style={[styles.profileAvatar, styles.avatarFallback]}>
-                    <Text style={styles.avatarInitials}>{initials(name || 'K')}</Text>
-                  </View>
-                )}
-              </Pressable>
-              <View style={styles.searchWrap}>
-                <AppIcon name="search" size={16} color={colors.textMuted} />
-                <TextInput
-                  style={styles.searchInput}
-                  placeholder="Search Krimie"
-                  placeholderTextColor={colors.textMuted}
-                  editable={false}
-                />
+      {loading ? (
+        <View style={styles.boot}>
+          <ActivityIndicator color={colors.primary} />
+        </View>
+      ) : (
+        <FlatList
+          data={feed}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => <PostCard post={item} />}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => {
+                setRefreshing(true);
+                load();
+              }}
+              tintColor={colors.primary}
+            />
+          }
+          ListHeaderComponent={
+            <View>
+              <StoryRail />
+              <View style={styles.composerRow}>
+                <Pressable onPress={() => router.push('/(tabs)/profile')}>
+                  {me?.avatar_url ? (
+                    <Image source={{ uri: me.avatar_url }} style={styles.profileAvatar} />
+                  ) : (
+                    <View style={[styles.profileAvatar, styles.avatarFallback]}>
+                      <Text style={styles.avatarInitials}>{initials(name || 'K')}</Text>
+                    </View>
+                  )}
+                </Pressable>
+                <Pressable
+                  style={styles.searchWrap}
+                  onPress={() => router.push('/(tabs)/create')}
+                >
+                  <AppIcon name="search" size={16} color={colors.textMuted} />
+                  <Text style={styles.searchPlaceholder}>What is on your mind?</Text>
+                </Pressable>
               </View>
             </View>
-          </View>
-        }
-        contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={false}
-        ItemSeparatorComponent={() => <View style={styles.sep} />}
-      />
+          }
+          ListEmptyComponent={
+            <Text style={styles.empty}>
+              No posts yet. Tap + to share the first one on Krimie.
+            </Text>
+          }
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+          ItemSeparatorComponent={() => <View style={styles.sep} />}
+        />
+      )}
 
       <MenuSheet visible={menuOpen} onClose={() => setMenuOpen(false)} />
     </SafeAreaView>
@@ -94,6 +126,11 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: colors.bg,
+  },
+  boot: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   header: {
     flexDirection: 'row',
@@ -175,11 +212,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  searchInput: {
-    flex: 1,
-    color: colors.text,
+  searchPlaceholder: {
+    color: colors.textMuted,
     fontSize: 14,
-    padding: 0,
   },
   list: {
     paddingHorizontal: spacing.lg,
@@ -187,5 +222,12 @@ const styles = StyleSheet.create({
   },
   sep: {
     height: spacing.md,
+  },
+  empty: {
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginTop: spacing.xxl,
+    fontSize: 14,
+    lineHeight: 20,
   },
 });
