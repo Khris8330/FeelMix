@@ -24,7 +24,23 @@ export async function signUp(email: string, password: string, displayName: strin
         display_name: displayName,
         full_name: displayName,
       },
+      emailRedirectTo: 'https://feel-mix.vercel.app',
     },
+  });
+}
+
+export async function verifyEmailOtp(email: string, token: string) {
+  return supabase.auth.verifyOtp({
+    email,
+    token,
+    type: 'signup',
+  });
+}
+
+export async function resendSignupOtp(email: string) {
+  return supabase.auth.resend({
+    type: 'signup',
+    email,
   });
 }
 

@@ -22,12 +22,10 @@ export default function SignupScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [info, setInfo] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const onCreate = async () => {
     setError(null);
-    setInfo(null);
     if (!name.trim() || !email.trim() || !password.trim()) {
       setError('Fill in all fields.');
       return;
@@ -47,12 +45,15 @@ export default function SignupScreen() {
       setError(authError.message);
       return;
     }
-    // If email confirmation is required, session may be null.
     if (data.session) {
       router.replace('/(tabs)');
-    } else {
-      setInfo('Check your email to confirm your account, then log in.');
+      return;
     }
+    // Email confirmation required: go to 6-digit code screen
+    router.push({
+      pathname: '/(auth)/verify',
+      params: { email: email.trim() },
+    });
   };
 
   return (
@@ -107,7 +108,6 @@ export default function SignupScreen() {
             </Text>
 
             {error ? <Text style={styles.error}>{error}</Text> : null}
-            {info ? <Text style={styles.info}>{info}</Text> : null}
 
             <Pressable
               style={[styles.signupBtn, loading && styles.signupBtnDisabled]}
@@ -181,11 +181,6 @@ const styles = StyleSheet.create({
   },
   error: {
     color: colors.danger,
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  info: {
-    color: colors.success,
     fontSize: 13,
     fontWeight: '600',
   },
