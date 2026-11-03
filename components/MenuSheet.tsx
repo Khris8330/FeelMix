@@ -1,5 +1,7 @@
 import { Modal, View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
+import { useRouter } from 'expo-router';
 import { colors, radii, spacing } from '@/constants/theme';
+import { signOut } from '@/lib/session';
 import { AppIcon } from './AppIcon';
 
 type Props = {
@@ -14,6 +16,8 @@ const ITEMS = [
 ] as const;
 
 export function MenuSheet({ visible, onClose }: Props) {
+  const router = useRouter();
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
@@ -26,7 +30,6 @@ export function MenuSheet({ visible, onClose }: Props) {
                 key={item.id}
                 style={styles.row}
                 onPress={() => {
-                  // V1: Settings and other items are placeholders until we expand them.
                   onClose();
                 }}
               >
@@ -37,6 +40,19 @@ export function MenuSheet({ visible, onClose }: Props) {
                 <AppIcon name="chevron-forward" size={18} color={colors.textMuted} />
               </Pressable>
             ))}
+            <Pressable
+              style={styles.row}
+              onPress={() => {
+                signOut();
+                onClose();
+                router.replace('/(auth)/login');
+              }}
+            >
+              <View style={styles.iconWrap}>
+                <AppIcon name="arrow-back" size={20} color={colors.danger} />
+              </View>
+              <Text style={[styles.rowLabel, { color: colors.danger }]}>Log out</Text>
+            </Pressable>
           </ScrollView>
         </Pressable>
       </Pressable>
