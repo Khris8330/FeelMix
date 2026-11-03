@@ -10,11 +10,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, radii, spacing } from '@/constants/theme';
 import { lifeEvents } from '@/data/mock';
 import { VibeCard } from '@/components/VibeCard';
+import { AppIcon } from '@/components/AppIcon';
 import type { VibeEmbed } from '@/data/mock';
 
 const MOCK_RESULT: VibeEmbed = {
@@ -47,15 +47,15 @@ export default function MoodScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={12}>
-          <Ionicons name="close" size={24} color={colors.text} />
+        <Pressable onPress={() => router.back()} hitSlop={12} style={styles.closeBtn}>
+          <AppIcon name="close" size={22} color={colors.text} />
         </Pressable>
         <Text style={styles.headerTitle}>Mood mix</Text>
-        <View style={{ width: 24 }} />
+        <View style={{ width: 40 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <Text style={styles.logoMark}>FM</Text>
+        <Text style={styles.brandTitle}>Mood Mix</Text>
         <Text style={styles.headline}>How are you feeling?</Text>
         <Text style={styles.sub}>
           Turn your mood into music, movies, and moments.
@@ -120,7 +120,7 @@ export default function MoodScreen() {
                 router.replace('/(tabs)');
               }}
             >
-              <Ionicons name="share-outline" size={18} color={colors.white} />
+              <AppIcon name="share-outline" size={18} color={colors.white} />
               <Text style={styles.shareText}>Share to feed</Text>
             </Pressable>
             <Text style={styles.privateNote}>
@@ -142,23 +142,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
   },
+  closeBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
   headerTitle: { color: colors.text, fontWeight: '700', fontSize: 16 },
   content: {
     paddingHorizontal: spacing.xl,
     paddingBottom: spacing.xxxl,
   },
-  logoMark: {
+  brandTitle: {
     alignSelf: 'center',
-    color: colors.primary,
-    fontSize: 28,
-    fontWeight: '900',
-    letterSpacing: -1,
+    color: colors.white,
+    fontSize: 32,
+    fontWeight: '800',
+    letterSpacing: -0.8,
     marginTop: spacing.md,
   },
   headline: {
     color: colors.text,
-    fontSize: 26,
-    fontWeight: '800',
+    fontSize: 22,
+    fontWeight: '700',
     textAlign: 'center',
     marginTop: spacing.md,
   },
