@@ -25,7 +25,7 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.logo}>
-          Feel<Text style={styles.logoAccent}>Mix</Text>
+          Kri<Text style={styles.logoAccent}>mie</Text>
         </Text>
         <View style={styles.headerActions}>
           <Pressable hitSlop={10} onPress={() => router.push('/mood')} style={styles.iconBtn}>
@@ -56,7 +56,7 @@ export default function HomeScreen() {
                 <AppIcon name="search" size={16} color={colors.textMuted} />
                 <TextInput
                   style={styles.searchInput}
-                  placeholder="Search FeelMix"
+                  placeholder="Search Krimie"
                   placeholderTextColor={colors.textMuted}
                   editable={false}
                 />

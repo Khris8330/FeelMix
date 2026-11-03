@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "FeelMix",
-    "slug": "feelmix",
+    "name": "Krimie",
+    "slug": "krimie",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./branding/icons/Icon-512.png",
-    "scheme": "feelmix",
+    "scheme": "krimie",
     "userInterfaceStyle": "dark",
     "splash": {
       "image": "./branding/icons/Icon-512.png",
@@ -14,14 +14,14 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "app.feelmix.mobile"
+      "bundleIdentifier": "app.krimie.mobile"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./branding/icons/Icon-512.png",
         "backgroundColor": "#0B0B12"
       },
-      "package": "app.feelmix.mobile"
+      "package": "app.krimie.mobile"
     },
     "web": {
       "bundler": "metro",

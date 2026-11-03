@@ -7,8 +7,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/constants/theme';
 
 export default function RootLayout() {
-  // Load icon fonts in the background. Do not block the UI on web static export,
-  // where useFonts can hang and leave a permanent spinner.
   useFonts({
     ...Ionicons.font,
   });
@@ -24,6 +22,8 @@ export default function RootLayout() {
             animation: 'fade',
           }}
         >
+          <Stack.Screen name="index" />
+          <Stack.Screen name="(auth)" />
           <Stack.Screen name="(tabs)" />
           <Stack.Screen
             name="mood"
