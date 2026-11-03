@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -9,17 +9,27 @@ import {
   Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { colors, radii, spacing } from '@/constants/theme';
-import { posts, currentUser } from '@/data/mock';
+import { posts } from '@/data/mock';
 import { PostCard } from '@/components/PostCard';
 import { StoryRail } from '@/components/StoryRail';
 import { MenuSheet } from '@/components/MenuSheet';
 import { AppIcon } from '@/components/AppIcon';
+import { fetchMyProfile, initials, type Profile } from '@/lib/profile';
 
 export default function HomeScreen() {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [me, setMe] = useState<Profile | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchMyProfile().then(setMe);
+    }, [])
+  );
+
+  const name = me?.display_name || me?.handle || '';
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -50,7 +60,13 @@ export default function HomeScreen() {
             <StoryRail />
             <View style={styles.composerRow}>
               <Pressable onPress={() => router.push('/(tabs)/profile')}>
-                <Image source={{ uri: currentUser.avatar }} style={styles.profileAvatar} />
+                {me?.avatar_url ? (
+                  <Image source={{ uri: me.avatar_url }} style={styles.profileAvatar} />
+                ) : (
+                  <View style={[styles.profileAvatar, styles.avatarFallback]}>
+                    <Text style={styles.avatarInitials}>{initials(name || 'K')}</Text>
+                  </View>
+                )}
               </Pressable>
               <View style={styles.searchWrap}>
                 <AppIcon name="search" size={16} color={colors.textMuted} />
@@ -137,6 +153,15 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderWidth: 1.5,
     borderColor: colors.border,
+  },
+  avatarFallback: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarInitials: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '800',
   },
   searchWrap: {
     flex: 1,
