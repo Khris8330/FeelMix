@@ -1,19 +1,57 @@
-import { Tabs } from 'expo-router';
-import { View, StyleSheet, Platform, useWindowDimensions } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Tabs, useRouter } from 'expo-router';
+import { View, StyleSheet, Platform, useWindowDimensions, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '@/constants/theme';
 import { AppIcon } from '@/components/AppIcon';
+import { getSession } from '@/lib/session';
+import { supabase } from '@/lib/supabase';
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const isMobileWeb = Platform.OS === 'web' && width < 768;
+  const router = useRouter();
+  const [allowed, setAllowed] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+
+    (async () => {
+      const session = await getSession();
+      if (!mounted) return;
+      if (!session) {
+        router.replace('/(auth)/login');
+        return;
+      }
+      setAllowed(true);
+    })();
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) {
+        router.replace('/(auth)/login');
+      }
+    });
+
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
+  }, [router]);
 
   const bottomPad = Math.max(
     insets.bottom,
     isMobileWeb ? 22 : Platform.OS === 'web' ? 14 : 10
   );
   const barHeight = (isMobileWeb ? 62 : 56) + bottomPad;
+
+  if (!allowed) {
+    return (
+      <View style={styles.boot}>
+        <ActivityIndicator color={colors.primary} />
+      </View>
+    );
+  }
 
   return (
     <Tabs
@@ -100,6 +138,12 @@ export default function TabsLayout() {
 }
 
 const styles = StyleSheet.create({
+  boot: {
+    flex: 1,
+    backgroundColor: colors.bg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   tabLabel: {
     fontSize: 11,
     fontWeight: '600',

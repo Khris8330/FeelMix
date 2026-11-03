@@ -10,7 +10,8 @@
     "export:web": "expo export -p web"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.49.1",
+    "@opentelemetry/api": "^1.9.0",
+    "@supabase/supabase-js": "2.49.1",
     "@react-native-async-storage/async-storage": "1.23.1",
     "expo": "~52.0.0",
     "expo-asset": "~11.0.0",
