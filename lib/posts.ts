@@ -33,10 +33,28 @@ export type FeedPost = {
   author: FeedAuthor;
   vibe: FeedVibe | null;
   liked_by_me: boolean;
+  my_reaction: string | null;
   reposted_by_me: boolean;
 };
 
-function mapRow(row: any, likedIds: Set<string>, repostIds: Set<string>): FeedPost {
+export type CommentItem = {
+  id: string;
+  body: string;
+  created_at: string;
+  author: {
+    id: string;
+    handle: string;
+    display_name: string;
+    avatar_url: string | null;
+  };
+};
+
+function mapRow(
+  row: any,
+  likedIds: Set<string>,
+  repostIds: Set<string>,
+  myReactions: Map<string, string>
+): FeedPost {
   const author = row.profiles || row.author || {};
   const vibeRow = Array.isArray(row.vibes) ? row.vibes[0] : row.vibes;
   return {
@@ -68,7 +86,8 @@ function mapRow(row: any, likedIds: Set<string>, repostIds: Set<string>): FeedPo
           cover_url: vibeRow.cover_url,
         }
       : null,
-    liked_by_me: likedIds.has(row.id),
+    liked_by_me: likedIds.has(row.id) || myReactions.has(row.id),
+    my_reaction: myReactions.get(row.id) || null,
     reposted_by_me: repostIds.has(row.id),
   };
 }
@@ -89,12 +108,13 @@ export function formatRelativeTime(iso: string): string {
 async function engagementSets(postIds: string[]) {
   const liked = new Set<string>();
   const reposted = new Set<string>();
-  if (!postIds.length) return { liked, reposted };
+  const myReactions = new Map<string, string>();
+  if (!postIds.length) return { liked, reposted, myReactions };
 
   const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return { liked, reposted };
+  if (!auth.user) return { liked, reposted, myReactions };
 
-  const [{ data: likes }, { data: reposts }] = await Promise.all([
+  const [{ data: likes }, { data: reposts }, { data: reactions }] = await Promise.all([
     supabase
       .from('likes')
       .select('post_id')
@@ -105,11 +125,17 @@ async function engagementSets(postIds: string[]) {
       .select('post_id')
       .eq('user_id', auth.user.id)
       .in('post_id', postIds),
+    supabase
+      .from('reactions')
+      .select('post_id, type')
+      .eq('user_id', auth.user.id)
+      .in('post_id', postIds),
   ]);
 
   (likes || []).forEach((r) => liked.add(r.post_id));
   (reposts || []).forEach((r) => reposted.add(r.post_id));
-  return { liked, reposted };
+  (reactions || []).forEach((r) => myReactions.set(r.post_id, r.type));
+  return { liked, reposted, myReactions };
 }
 
 export async function fetchFeedPosts(limit = 40): Promise<FeedPost[]> {
@@ -132,8 +158,8 @@ export async function fetchFeedPosts(limit = 40): Promise<FeedPost[]> {
   }
 
   const ids = data.map((r) => r.id);
-  const { liked, reposted } = await engagementSets(ids);
-  return data.map((r) => mapRow(r, liked, reposted));
+  const { liked, reposted, myReactions } = await engagementSets(ids);
+  return data.map((r) => mapRow(r, liked, reposted, myReactions));
 }
 
 export async function fetchPostsByAuthor(authorId: string): Promise<FeedPost[]> {
@@ -152,8 +178,8 @@ export async function fetchPostsByAuthor(authorId: string): Promise<FeedPost[]> 
 
   if (error || !data) return [];
   const ids = data.map((r) => r.id);
-  const { liked, reposted } = await engagementSets(ids);
-  return data.map((r) => mapRow(r, liked, reposted));
+  const { liked, reposted, myReactions } = await engagementSets(ids);
+  return data.map((r) => mapRow(r, liked, reposted, myReactions));
 }
 
 export async function createPost(body: string, imageUrl?: string | null) {
@@ -245,6 +271,35 @@ export async function toggleLike(postId: string, currentlyLiked: boolean) {
   return { error };
 }
 
+/** Set or clear a reaction emoji type (love, haha, wow, sad, angry, fire). */
+export async function setReaction(postId: string, type: string | null) {
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return { error: new Error('Not signed in') };
+
+  // Clear existing reaction + like row for this user/post
+  await supabase.from('reactions').delete().eq('user_id', auth.user.id).eq('post_id', postId);
+  await supabase.from('likes').delete().eq('user_id', auth.user.id).eq('post_id', postId);
+
+  if (!type) return { error: null };
+
+  const { error: rErr } = await supabase.from('reactions').insert({
+    user_id: auth.user.id,
+    post_id: postId,
+    type,
+  });
+  if (rErr) return { error: rErr };
+
+  // Keep likes_count path in sync for heart/love
+  if (type === 'love' || type === 'like') {
+    await supabase.from('likes').insert({
+      user_id: auth.user.id,
+      post_id: postId,
+    });
+  }
+
+  return { error: null };
+}
+
 export async function toggleRepost(postId: string, currentlyReposted: boolean) {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return { error: new Error('Not signed in') };
@@ -262,4 +317,48 @@ export async function toggleRepost(postId: string, currentlyReposted: boolean) {
     post_id: postId,
   });
   return { error };
+}
+
+export async function fetchComments(postId: string): Promise<CommentItem[]> {
+  const { data, error } = await supabase
+    .from('comments')
+    .select(
+      `
+      id, body, created_at,
+      profiles!comments_author_id_fkey ( id, handle, display_name, avatar_url )
+    `
+    )
+    .eq('post_id', postId)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: true });
+
+  if (error || !data) return [];
+  return data.map((c: any) => ({
+    id: c.id,
+    body: c.body,
+    created_at: c.created_at,
+    author: {
+      id: c.profiles?.id,
+      handle: c.profiles?.handle,
+      display_name: c.profiles?.display_name,
+      avatar_url: c.profiles?.avatar_url,
+    },
+  }));
+}
+
+export async function addComment(postId: string, body: string) {
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return { error: new Error('Not signed in'), comment: null };
+
+  const { data, error } = await supabase
+    .from('comments')
+    .insert({
+      post_id: postId,
+      author_id: auth.user.id,
+      body: body.trim(),
+    })
+    .select('id')
+    .single();
+
+  return { error, comment: data };
 }

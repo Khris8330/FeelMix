@@ -37,8 +37,16 @@ export function StoryRail() {
     }, [load])
   );
 
-  const hasOwn = stories.some((s) => s.is_own);
+  const ownStory = stories.find((s) => s.is_own) || null;
   const others = stories.filter((s) => !s.is_own);
+
+  const openOwn = () => {
+    if (ownStory) {
+      router.push(`/story/${ownStory.id}`);
+    } else {
+      router.push('/add-story');
+    }
+  };
 
   return (
     <ScrollView
@@ -46,38 +54,47 @@ export function StoryRail() {
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.row}
     >
-      {/* Your story — always first, tappable to add */}
-      <Pressable
-        style={styles.item}
-        onPress={() => router.push('/add-story')}
-      >
-        <View style={styles.ringWrap}>
-          <LinearGradient
-            colors={hasOwn ? [colors.primary, colors.coral] : ['#3A3A4A', '#3A3A4A']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.ring}
-          >
-            <View style={styles.ringInner}>
-              {me?.avatar_url ? (
-                <Image source={{ uri: me.avatar_url }} style={styles.avatar} />
-              ) : (
-                <View style={[styles.avatar, styles.avatarFallback]}>
-                  <Text style={styles.avatarInitials}>
-                    {initials(me?.display_name || me?.handle || 'Y')}
-                  </Text>
-                </View>
-              )}
-            </View>
-          </LinearGradient>
-          <View style={styles.addBadge}>
-            <AppIcon name="add" size={12} color={colors.white} />
+      <View style={styles.item}>
+        <Pressable onPress={openOwn}>
+          <View style={styles.ringWrap}>
+            <LinearGradient
+              colors={
+                ownStory
+                  ? [colors.primary, colors.coral]
+                  : ['#3A3A4A', '#3A3A4A']
+              }
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.ring}
+            >
+              <View style={styles.ringInner}>
+                {me?.avatar_url ? (
+                  <Image source={{ uri: me.avatar_url }} style={styles.avatar} />
+                ) : (
+                  <View style={[styles.avatar, styles.avatarFallback]}>
+                    <Text style={styles.avatarInitials}>
+                      {initials(me?.display_name || me?.handle || 'Y')}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </LinearGradient>
+            <Pressable
+              style={styles.addBadge}
+              onPress={(e) => {
+                e.stopPropagation?.();
+                router.push('/add-story');
+              }}
+              hitSlop={8}
+            >
+              <AppIcon name="add" size={12} color={colors.white} />
+            </Pressable>
           </View>
-        </View>
+        </Pressable>
         <Text style={styles.label} numberOfLines={1}>
           Your story
         </Text>
-      </Pressable>
+      </View>
 
       {loading ? (
         <View style={styles.loadingWrap}>
@@ -191,6 +208,7 @@ const styles = StyleSheet.create({
     borderColor: colors.bg,
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 2,
   },
   label: {
     marginTop: 6,

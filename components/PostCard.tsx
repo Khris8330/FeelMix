@@ -1,11 +1,27 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet, Image, Pressable } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  Pressable,
+  Modal,
+  TextInput,
+  FlatList,
+  ActivityIndicator,
+  Platform,
+  Alert,
+  KeyboardAvoidingView,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { colors, radii, spacing } from '@/constants/theme';
 import {
+  addComment,
+  fetchComments,
   formatRelativeTime,
-  toggleLike,
+  setReaction,
   toggleRepost,
+  type CommentItem,
   type FeedPost,
 } from '@/lib/posts';
 import { initials } from '@/lib/profile';
@@ -16,21 +32,62 @@ type Props = {
   post: FeedPost;
 };
 
+const REACTIONS: { type: string; emoji: string; label: string }[] = [
+  { type: 'love', emoji: '❤️', label: 'Love' },
+  { type: 'haha', emoji: '😂', label: 'Haha' },
+  { type: 'wow', emoji: '😮', label: 'Wow' },
+  { type: 'sad', emoji: '😢', label: 'Sad' },
+  { type: 'angry', emoji: '😡', label: 'Angry' },
+  { type: 'fire', emoji: '🔥', label: 'Fire' },
+];
+
+function reactionEmoji(type: string | null) {
+  return REACTIONS.find((r) => r.type === type)?.emoji || '❤️';
+}
+
 export function PostCard({ post }: Props) {
   const router = useRouter();
   const user = post.author;
-  const [liked, setLiked] = useState(post.liked_by_me);
+  const [reaction, setReactionLocal] = useState<string | null>(post.my_reaction);
   const [likeCount, setLikeCount] = useState(post.likes_count);
+  const [commentCount, setCommentCount] = useState(post.comments_count);
   const [reposted, setReposted] = useState(post.reposted_by_me);
   const [repostCount, setRepostCount] = useState(post.reposts_count);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  const [comments, setComments] = useState<CommentItem[]>([]);
+  const [commentText, setCommentText] = useState('');
+  const [loadingComments, setLoadingComments] = useState(false);
+  const [sending, setSending] = useState(false);
 
-  const onLike = async () => {
-    const next = !liked;
-    setLiked(next);
-    setLikeCount((c) => (next ? c + 1 : Math.max(0, c - 1)));
-    const { error } = await toggleLike(post.id, liked);
+  const name = user.display_name || user.handle;
+  const vibe = post.vibe
+    ? {
+        moodTitle: post.vibe.mood_title,
+        moodSubtitle: post.vibe.mood_subtitle || undefined,
+        trackName: post.vibe.track_name,
+        trackArtist: post.vibe.track_artist,
+        movieTitle: post.vibe.movie_title,
+        movieYear: post.vibe.movie_year || '',
+        movieDirector: post.vibe.movie_director || undefined,
+        coverUrl: post.vibe.cover_url || undefined,
+      }
+    : null;
+
+  const applyReaction = async (type: string | null) => {
+    const prev = reaction;
+    const had = !!prev;
+    const next = type === prev ? null : type;
+    setReactionLocal(next);
+    setLikeCount((c) => {
+      if (had && !next) return Math.max(0, c - 1);
+      if (!had && next) return c + 1;
+      return c;
+    });
+    setPickerOpen(false);
+    const { error } = await setReaction(post.id, next);
     if (error) {
-      setLiked(liked);
+      setReactionLocal(prev);
       setLikeCount(post.likes_count);
     }
   };
@@ -46,19 +103,61 @@ export function PostCard({ post }: Props) {
     }
   };
 
-  const name = user.display_name || user.handle;
-  const vibe = post.vibe
-    ? {
-        moodTitle: post.vibe.mood_title,
-        moodSubtitle: post.vibe.mood_subtitle || undefined,
-        trackName: post.vibe.track_name,
-        trackArtist: post.vibe.track_artist,
-        movieTitle: post.vibe.movie_title,
-        movieYear: post.vibe.movie_year || '',
-        movieDirector: post.vibe.movie_director || undefined,
-        coverUrl: post.vibe.cover_url || undefined,
+  const openComments = async () => {
+    setCommentsOpen(true);
+    setLoadingComments(true);
+    const list = await fetchComments(post.id);
+    setComments(list);
+    setLoadingComments(false);
+  };
+
+  const sendComment = async () => {
+    if (!commentText.trim()) return;
+    setSending(true);
+    const { error } = await addComment(post.id, commentText);
+    setSending(false);
+    if (error) {
+      Alert.alert('Could not comment', error.message);
+      return;
+    }
+    setCommentText('');
+    setCommentCount((c) => c + 1);
+    const list = await fetchComments(post.id);
+    setComments(list);
+  };
+
+  const onShare = async () => {
+    const url =
+      typeof window !== 'undefined'
+        ? `${window.location.origin}/?post=${post.id}`
+        : `https://feel-mix.vercel.app/?post=${post.id}`;
+    const message = post.body.slice(0, 120);
+
+    try {
+      if (typeof navigator !== 'undefined' && (navigator as any).share) {
+        await (navigator as any).share({
+          title: 'Krimie',
+          text: message,
+          url,
+        });
+        return;
       }
-    : null;
+    } catch {
+      // user cancelled or unsupported
+    }
+
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(url);
+        Alert.alert('Link copied', 'Post link copied to clipboard.');
+        return;
+      }
+    } catch {
+      // fall through
+    }
+
+    Alert.alert('Share', url);
+  };
 
   return (
     <View style={styles.card}>
@@ -104,7 +203,7 @@ export function PostCard({ post }: Props) {
         <View style={styles.statLeft}>
           <View style={styles.reactionStack}>
             <View style={[styles.reactionDot, { backgroundColor: colors.primary }]}>
-              <AppIcon name="heart" size={9} color={colors.white} />
+              <Text style={styles.reactionEmoji}>{reaction ? reactionEmoji(reaction) : '❤️'}</Text>
             </View>
             <View style={[styles.reactionDot, styles.reactionOverlap, { backgroundColor: '#FBBF24' }]}>
               <Text style={styles.reactionEmoji}>😂</Text>
@@ -116,20 +215,41 @@ export function PostCard({ post }: Props) {
           <Text style={styles.statText}>{likeCount}</Text>
         </View>
         <Text style={styles.statText}>
-          {post.comments_count} comments · {repostCount} reposts
+          {commentCount} comments · {repostCount} reposts
         </Text>
       </View>
 
+      {pickerOpen ? (
+        <View style={styles.picker}>
+          {REACTIONS.map((r) => (
+            <Pressable
+              key={r.type}
+              style={[styles.pickerItem, reaction === r.type && styles.pickerItemActive]}
+              onPress={() => applyReaction(r.type)}
+            >
+              <Text style={styles.pickerEmoji}>{r.emoji}</Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
+
       <View style={styles.actions}>
-        <Pressable style={styles.action} onPress={onLike}>
-          <AppIcon
-            name={liked ? 'heart' : 'heart-outline'}
-            size={18}
-            color={liked ? colors.primary : colors.textSecondary}
-          />
-          <Text style={[styles.actionLabel, liked && styles.actionLabelActive]}>Like</Text>
+        <Pressable
+          style={styles.action}
+          onPress={() => applyReaction(reaction ? null : 'love')}
+          onLongPress={() => setPickerOpen((v) => !v)}
+          delayLongPress={200}
+        >
+          {reaction ? (
+            <Text style={{ fontSize: 16 }}>{reactionEmoji(reaction)}</Text>
+          ) : (
+            <AppIcon name="heart-outline" size={18} color={colors.textSecondary} />
+          )}
+          <Text style={[styles.actionLabel, !!reaction && styles.actionLabelActive]}>
+            {reaction ? REACTIONS.find((r) => r.type === reaction)?.label || 'Like' : 'Like'}
+          </Text>
         </Pressable>
-        <Pressable style={styles.action}>
+        <Pressable style={styles.action} onPress={openComments}>
           <AppIcon name="chatbubble-outline" size={17} color={colors.textSecondary} />
           <Text style={styles.actionLabel}>Comment</Text>
         </Pressable>
@@ -143,11 +263,72 @@ export function PostCard({ post }: Props) {
             Repost
           </Text>
         </Pressable>
-        <Pressable style={styles.action}>
+        <Pressable style={styles.action} onPress={onShare}>
           <AppIcon name="share-outline" size={17} color={colors.textSecondary} />
           <Text style={styles.actionLabel}>Share</Text>
         </Pressable>
       </View>
+
+      <Modal visible={commentsOpen} animationType="slide" transparent onRequestClose={() => setCommentsOpen(false)}>
+        <KeyboardAvoidingView
+          style={styles.modalRoot}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <Pressable style={styles.modalBackdrop} onPress={() => setCommentsOpen(false)} />
+          <View style={styles.sheet}>
+            <View style={styles.sheetHandle} />
+            <Text style={styles.sheetTitle}>Comments</Text>
+            {loadingComments ? (
+              <ActivityIndicator color={colors.primary} style={{ marginVertical: 24 }} />
+            ) : (
+              <FlatList
+                data={comments}
+                keyExtractor={(item) => item.id}
+                style={{ maxHeight: 320 }}
+                ListEmptyComponent={
+                  <Text style={styles.emptyComments}>Be the first to comment.</Text>
+                }
+                renderItem={({ item }) => (
+                  <View style={styles.commentRow}>
+                    {item.author.avatar_url ? (
+                      <Image source={{ uri: item.author.avatar_url }} style={styles.commentAvatar} />
+                    ) : (
+                      <View style={[styles.commentAvatar, styles.avatarFallback]}>
+                        <Text style={styles.commentInitials}>
+                          {initials(item.author.display_name || item.author.handle || '?')}
+                        </Text>
+                      </View>
+                    )}
+                    <View style={styles.commentBubble}>
+                      <Text style={styles.commentName}>
+                        {item.author.display_name || item.author.handle}
+                      </Text>
+                      <Text style={styles.commentBody}>{item.body}</Text>
+                      <Text style={styles.commentTime}>{formatRelativeTime(item.created_at)}</Text>
+                    </View>
+                  </View>
+                )}
+              />
+            )}
+            <View style={styles.composer}>
+              <TextInput
+                style={styles.commentInput}
+                placeholder="Write a comment..."
+                placeholderTextColor={colors.textMuted}
+                value={commentText}
+                onChangeText={setCommentText}
+              />
+              <Pressable onPress={sendComment} disabled={sending} style={styles.sendBtn}>
+                {sending ? (
+                  <ActivityIndicator color={colors.white} size="small" />
+                ) : (
+                  <Text style={styles.sendText}>Post</Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -257,6 +438,28 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 12,
   },
+  picker: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: radii.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginTop: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  pickerItem: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pickerItemActive: {
+    backgroundColor: 'rgba(255,61,138,0.15)',
+  },
+  pickerEmoji: { fontSize: 22 },
   actions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -278,4 +481,89 @@ const styles = StyleSheet.create({
   actionLabelActive: {
     color: colors.primary,
   },
+  modalRoot: { flex: 1, justifyContent: 'flex-end' },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  sheet: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.xxl,
+    paddingTop: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  sheetHandle: {
+    alignSelf: 'center',
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.border,
+    marginBottom: spacing.md,
+  },
+  sheetTitle: {
+    color: colors.text,
+    fontWeight: '800',
+    fontSize: 16,
+    marginBottom: spacing.md,
+  },
+  emptyComments: {
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginVertical: spacing.xl,
+  },
+  commentRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginBottom: spacing.md,
+  },
+  commentAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.surfaceElevated,
+  },
+  commentInitials: {
+    color: colors.text,
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  commentBubble: {
+    flex: 1,
+    backgroundColor: colors.bg,
+    borderRadius: radii.lg,
+    padding: spacing.md,
+  },
+  commentName: { color: colors.text, fontWeight: '700', fontSize: 13 },
+  commentBody: { color: colors.textSecondary, fontSize: 14, marginTop: 2 },
+  commentTime: { color: colors.textMuted, fontSize: 11, marginTop: 4 },
+  composer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  commentInput: {
+    flex: 1,
+    backgroundColor: colors.bg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.pill,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: 10,
+    color: colors.text,
+    fontSize: 14,
+  },
+  sendBtn: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: 10,
+    borderRadius: radii.pill,
+    minWidth: 64,
+    alignItems: 'center',
+  },
+  sendText: { color: colors.white, fontWeight: '700', fontSize: 13 },
 });
