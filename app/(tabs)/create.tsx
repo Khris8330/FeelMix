@@ -10,37 +10,74 @@ import {
   Platform,
   Image,
   ActivityIndicator,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import { colors, radii, spacing } from '@/constants/theme';
 import { AppIcon } from '@/components/AppIcon';
 import { fetchMyProfile, initials, type Profile } from '@/lib/profile';
 import { createPost } from '@/lib/posts';
+import { uploadPostImage } from '@/lib/media';
 
 export default function CreateScreen() {
   const router = useRouter();
   const [body, setBody] = useState('');
   const [me, setMe] = useState<Profile | null>(null);
   const [posting, setPosting] = useState(false);
+  const [imageUri, setImageUri] = useState<string | null>(null);
+  const [imageMime, setImageMime] = useState('image/jpeg');
 
   useEffect(() => {
     fetchMyProfile().then(setMe);
   }, []);
 
+  const pickPhoto = async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted && Platform.OS !== 'web') {
+      Alert.alert('Permission needed', 'Allow photo access to attach an image.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.7,
+      allowsEditing: true,
+    });
+    if (result.canceled || !result.assets?.[0]) return;
+    setImageUri(result.assets[0].uri);
+    setImageMime(result.assets[0].mimeType || 'image/jpeg');
+  };
+
   const publish = async () => {
-    if (!body.trim()) {
-      Alert.alert('Add something', 'Write a thought before posting.');
+    if (!body.trim() && !imageUri) {
+      Alert.alert('Add something', 'Write a thought or add a photo.');
       return;
     }
     setPosting(true);
-    const { error } = await createPost(body);
+
+    let imageUrl: string | null = null;
+    if (imageUri) {
+      const { error: upError, url } = await uploadPostImage({
+        uri: imageUri,
+        type: imageMime,
+      });
+      if (upError || !url) {
+        setPosting(false);
+        Alert.alert('Photo upload failed', upError?.message || 'Try again');
+        return;
+      }
+      imageUrl = url;
+    }
+
+    const { error } = await createPost(body.trim() || ' ', imageUrl);
     setPosting(false);
     if (error) {
       Alert.alert('Could not post', error.message);
       return;
     }
     setBody('');
+    setImageUri(null);
     router.replace('/(tabs)');
   };
 
@@ -70,7 +107,7 @@ export default function CreateScreen() {
           </Pressable>
         </View>
 
-        <View style={styles.composer}>
+        <ScrollView style={styles.composer} keyboardShouldPersistTaps="handled">
           <View style={styles.userRow}>
             {me?.avatar_url ? (
               <Image source={{ uri: me.avatar_url }} style={styles.avatar} />
@@ -91,14 +128,26 @@ export default function CreateScreen() {
             autoFocus
             editable={!posting}
           />
-        </View>
+          {imageUri ? (
+            <View style={styles.previewWrap}>
+              <Image source={{ uri: imageUri }} style={styles.preview} />
+              <Pressable
+                style={styles.removePhoto}
+                onPress={() => setImageUri(null)}
+                disabled={posting}
+              >
+                <AppIcon name="close" size={16} color={colors.white} />
+              </Pressable>
+            </View>
+          ) : null}
+        </ScrollView>
 
         <View style={styles.tools}>
-          <Pressable style={styles.tool} onPress={() => router.push('/mood')}>
+          <Pressable style={styles.tool} onPress={() => router.push('/mood')} disabled={posting}>
             <AppIcon name="sparkles" size={20} color={colors.primary} />
             <Text style={styles.toolLabel}>Add a vibe</Text>
           </Pressable>
-          <Pressable style={styles.tool}>
+          <Pressable style={styles.tool} onPress={pickPhoto} disabled={posting}>
             <AppIcon name="image-outline" size={20} color={colors.textSecondary} />
             <Text style={styles.toolLabel}>Photo</Text>
           </Pressable>
@@ -157,8 +206,29 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 17,
     lineHeight: 24,
-    minHeight: 140,
+    minHeight: 120,
     textAlignVertical: 'top',
+  },
+  previewWrap: {
+    marginTop: spacing.lg,
+    position: 'relative',
+  },
+  preview: {
+    width: '100%',
+    height: 220,
+    borderRadius: radii.lg,
+    backgroundColor: colors.surface,
+  },
+  removePhoto: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   tools: {
     flexDirection: 'row',

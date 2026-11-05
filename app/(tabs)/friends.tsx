@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -6,58 +6,128 @@ import {
   FlatList,
   Image,
   Pressable,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { colors, radii, spacing } from '@/constants/theme';
-import { getFollowers, getSuggested, type User } from '@/data/mock';
+import {
+  fetchFollowing,
+  fetchSuggested,
+  followUser,
+  unfollowUser,
+  type Person,
+} from '@/lib/follows';
+import { initials } from '@/lib/profile';
 
 function PersonRow({
-  user,
+  person,
   actionLabel,
   onAction,
+  busy,
 }: {
-  user: User;
+  person: Person;
   actionLabel: string;
   onAction: () => void;
+  busy?: boolean;
 }) {
   const router = useRouter();
+  const name = person.display_name || person.handle;
+
   return (
     <View style={styles.row}>
       <Pressable
         style={styles.person}
-        onPress={() => router.push(`/user/${user.id}`)}
+        onPress={() => router.push(`/user/${person.id}`)}
       >
-        <Image source={{ uri: user.avatar }} style={styles.avatar} />
+        {person.avatar_url ? (
+          <Image source={{ uri: person.avatar_url }} style={styles.avatar} />
+        ) : (
+          <View style={[styles.avatar, styles.avatarFallback]}>
+            <Text style={styles.avatarInitials}>{initials(name)}</Text>
+          </View>
+        )}
         <View style={{ flex: 1 }}>
-          <Text style={styles.name}>{user.name}</Text>
-          <Text style={styles.handle}>@{user.handle}</Text>
+          <Text style={styles.name}>{name}</Text>
+          <Text style={styles.handle}>@{person.handle}</Text>
         </View>
       </Pressable>
-      <Pressable style={styles.actionBtn} onPress={onAction}>
-        <Text style={styles.actionText}>{actionLabel}</Text>
+      <Pressable
+        style={[styles.actionBtn, person.is_following && styles.actionBtnFollowing]}
+        onPress={onAction}
+        disabled={busy}
+      >
+        {busy ? (
+          <ActivityIndicator size="small" color={colors.text} />
+        ) : (
+          <Text style={styles.actionText}>{actionLabel}</Text>
+        )}
       </Pressable>
     </View>
   );
 }
 
+type Row =
+  | { type: 'header'; title: string; id: string }
+  | { type: 'user'; person: Person; id: string }
+  | { type: 'empty'; id: string; message: string };
+
 export default function FriendsScreen() {
-  const [following, setFollowing] = useState(getFollowers());
-  const [suggested, setSuggested] = useState(getSuggested());
+  const [following, setFollowing] = useState<Person[]>([]);
+  const [suggested, setSuggested] = useState<Person[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
-  const unfollow = (id: string) => {
-    const user = following.find((u) => u.id === id);
-    if (!user) return;
-    setFollowing((list) => list.filter((u) => u.id !== id));
-    setSuggested((list) => [...list, { ...user, isFollowing: false }]);
+  const load = useCallback(async () => {
+    const [f, s] = await Promise.all([fetchFollowing(), fetchSuggested()]);
+    setFollowing(f);
+    setSuggested(s);
+    setLoading(false);
+    setRefreshing(false);
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
+
+  const onFollow = async (id: string) => {
+    setBusyId(id);
+    const { error } = await followUser(id);
+    setBusyId(null);
+    if (error) return;
+    const person = suggested.find((p) => p.id === id);
+    if (person) {
+      setSuggested((list) => list.filter((p) => p.id !== id));
+      setFollowing((list) => [...list, { ...person, is_following: true }]);
+    }
   };
 
-  const follow = (id: string) => {
-    const user = suggested.find((u) => u.id === id);
-    if (!user) return;
-    setSuggested((list) => list.filter((u) => u.id !== id));
-    setFollowing((list) => [...list, { ...user, isFollowing: true }]);
+  const onUnfollow = async (id: string) => {
+    setBusyId(id);
+    const { error } = await unfollowUser(id);
+    setBusyId(null);
+    if (error) return;
+    const person = following.find((p) => p.id === id);
+    if (person) {
+      setFollowing((list) => list.filter((p) => p.id !== id));
+      setSuggested((list) => [...list, { ...person, is_following: false }]);
+    }
   };
+
+  const rows: Row[] = [
+    { type: 'header', title: 'Following', id: 'h1' },
+    ...(following.length
+      ? following.map((p) => ({ type: 'user' as const, person: p, id: p.id }))
+      : [{ type: 'empty' as const, id: 'e1', message: 'You are not following anyone yet.' }]),
+    { type: 'header', title: 'Suggested', id: 'h2' },
+    ...(suggested.length
+      ? suggested.map((p) => ({ type: 'user' as const, person: p, id: p.id }))
+      : [{ type: 'empty' as const, id: 'e2', message: 'No suggestions right now.' }]),
+  ];
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -66,37 +136,53 @@ export default function FriendsScreen() {
         <Text style={styles.sub}>Follow people. Message after they accept.</Text>
       </View>
 
-      <FlatList
-        data={[
-          { type: 'header', title: 'Following', id: 'h1' },
-          ...following.map((u) => ({ type: 'user' as const, user: u, id: u.id })),
-          { type: 'header', title: 'Suggested', id: 'h2' },
-          ...suggested.map((u) => ({ type: 'user' as const, user: u, id: u.id })),
-        ]}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => {
-          if (item.type === 'header') {
-            return <Text style={styles.section}>{item.title}</Text>;
-          }
-          const isFollowing = following.some((u) => u.id === item.user!.id);
-          return (
-            <PersonRow
-              user={item.user!}
-              actionLabel={isFollowing ? 'Following' : 'Follow'}
-              onAction={() =>
-                isFollowing ? unfollow(item.user!.id) : follow(item.user!.id)
-              }
+      {loading ? (
+        <View style={styles.boot}>
+          <ActivityIndicator color={colors.primary} />
+        </View>
+      ) : (
+        <FlatList
+          data={rows}
+          keyExtractor={(item) => item.id}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => {
+                setRefreshing(true);
+                load();
+              }}
+              tintColor={colors.primary}
             />
-          );
-        }}
-        contentContainerStyle={styles.list}
-      />
+          }
+          renderItem={({ item }) => {
+            if (item.type === 'header') {
+              return <Text style={styles.section}>{item.title}</Text>;
+            }
+            if (item.type === 'empty') {
+              return <Text style={styles.empty}>{item.message}</Text>;
+            }
+            const person = item.person;
+            return (
+              <PersonRow
+                person={person}
+                actionLabel={person.is_following ? 'Following' : 'Follow'}
+                busy={busyId === person.id}
+                onAction={() =>
+                  person.is_following ? onUnfollow(person.id) : onFollow(person.id)
+                }
+              />
+            );
+          }}
+          contentContainerStyle={styles.list}
+        />
+      )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
+  boot: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   header: {
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
@@ -112,6 +198,11 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     textTransform: 'uppercase',
     letterSpacing: 0.6,
+  },
+  empty: {
+    color: colors.textMuted,
+    fontSize: 13,
+    marginBottom: spacing.md,
   },
   row: {
     flexDirection: 'row',
@@ -132,12 +223,26 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     backgroundColor: colors.surfaceElevated,
   },
+  avatarFallback: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarInitials: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '800',
+  },
   name: { color: colors.text, fontWeight: '700', fontSize: 15 },
   handle: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
   actionBtn: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: radii.pill,
+    backgroundColor: colors.primary,
+    minWidth: 96,
+    alignItems: 'center',
+  },
+  actionBtnFollowing: {
     backgroundColor: colors.surfaceElevated,
     borderWidth: 1,
     borderColor: colors.border,
