@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import type { VibeEmbed } from '@/data/mock';
+import { getFollowingIds } from './follows';
 
 export type FeedAuthor = {
   id: string;
@@ -138,19 +139,45 @@ async function engagementSets(postIds: string[]) {
   return { liked, reposted, myReactions };
 }
 
+const postSelect = `
+  id, body, image_url, likes_count, comments_count, reposts_count, shares_count, created_at,
+  profiles!posts_author_id_fkey ( id, handle, display_name, avatar_url, is_verified, status_emoji ),
+  vibes ( mood_title, mood_subtitle, track_name, track_artist, movie_title, movie_year, movie_director, cover_url )
+`;
+
 export async function fetchFeedPosts(limit = 40): Promise<FeedPost[]> {
-  const { data, error } = await supabase
+  const { data: auth } = await supabase.auth.getUser();
+  const me = auth.user?.id;
+
+  let query = supabase
     .from('posts')
-    .select(
-      `
-      id, body, image_url, likes_count, comments_count, reposts_count, shares_count, created_at,
-      profiles!posts_author_id_fkey ( id, handle, display_name, avatar_url, is_verified, status_emoji ),
-      vibes ( mood_title, mood_subtitle, track_name, track_artist, movie_title, movie_year, movie_director, cover_url )
-    `
-    )
+    .select(postSelect)
     .is('deleted_at', null)
     .order('created_at', { ascending: false })
     .limit(limit);
+
+  // Prefer following + self when the user follows anyone
+  if (me) {
+    const followingIds = await getFollowingIds();
+    if (followingIds.length > 0) {
+      const authors = [...followingIds, me];
+      query = query.in('author_id', authors);
+    }
+  }
+
+  let { data, error } = await query;
+
+  // Fallback to global public feed if following feed is empty
+  if ((!data || data.length === 0) && !error) {
+    const fallback = await supabase
+      .from('posts')
+      .select(postSelect)
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    data = fallback.data;
+    error = fallback.error;
+  }
 
   if (error || !data) {
     console.warn('fetchFeedPosts', error?.message);
@@ -165,13 +192,7 @@ export async function fetchFeedPosts(limit = 40): Promise<FeedPost[]> {
 export async function fetchPostsByAuthor(authorId: string): Promise<FeedPost[]> {
   const { data, error } = await supabase
     .from('posts')
-    .select(
-      `
-      id, body, image_url, likes_count, comments_count, reposts_count, shares_count, created_at,
-      profiles!posts_author_id_fkey ( id, handle, display_name, avatar_url, is_verified, status_emoji ),
-      vibes ( mood_title, mood_subtitle, track_name, track_artist, movie_title, movie_year, movie_director, cover_url )
-    `
-    )
+    .select(postSelect)
     .eq('author_id', authorId)
     .is('deleted_at', null)
     .order('created_at', { ascending: false });
@@ -190,7 +211,7 @@ export async function createPost(body: string, imageUrl?: string | null) {
     .from('posts')
     .insert({
       author_id: auth.user.id,
-      body: body.trim(),
+      body: body.trim() || (imageUrl ? '' : ''),
       image_url: imageUrl || null,
       visibility: 'public',
     })
@@ -276,7 +297,6 @@ export async function setReaction(postId: string, type: string | null) {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return { error: new Error('Not signed in') };
 
-  // Clear existing reaction + like row for this user/post
   await supabase.from('reactions').delete().eq('user_id', auth.user.id).eq('post_id', postId);
   await supabase.from('likes').delete().eq('user_id', auth.user.id).eq('post_id', postId);
 
@@ -289,7 +309,6 @@ export async function setReaction(postId: string, type: string | null) {
   });
   if (rErr) return { error: rErr };
 
-  // Keep likes_count path in sync for heart/love
   if (type === 'love' || type === 'like') {
     await supabase.from('likes').insert({
       user_id: auth.user.id,
