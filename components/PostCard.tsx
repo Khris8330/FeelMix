@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -17,20 +17,25 @@ import { useRouter } from 'expo-router';
 import { colors, radii, spacing } from '@/constants/theme';
 import {
   addComment,
+  deletePost,
   fetchComments,
   formatRelativeTime,
   setReaction,
   toggleRepost,
+  updatePostBody,
+  updatePostVisibility,
   type CommentItem,
   type FeedPost,
 } from '@/lib/posts';
 import { initials } from '@/lib/profile';
+import { supabase } from '@/lib/supabase';
 import { VibeCard } from './VibeCard';
 import { AppIcon } from './AppIcon';
 import { PostImages } from './PostImages';
 
 type Props = {
   post: FeedPost;
+  onRemoved?: (postId: string) => void;
 };
 
 const REACTIONS: { type: string; emoji: string; label: string }[] = [
@@ -46,21 +51,39 @@ function reactionEmoji(type: string | null) {
   return REACTIONS.find((r) => r.type === type)?.emoji || '❤️';
 }
 
-export function PostCard({ post }: Props) {
+export function PostCard({ post, onRemoved }: Props) {
   const router = useRouter();
   const user = post.author;
+  const [meId, setMeId] = useState<string | null>(null);
   const [reaction, setReactionLocal] = useState<string | null>(post.my_reaction);
   const [likeCount, setLikeCount] = useState(post.likes_count);
   const [commentCount, setCommentCount] = useState(post.comments_count);
   const [reposted, setReposted] = useState(post.reposted_by_me);
   const [repostCount, setRepostCount] = useState(post.reposts_count);
+  const [visibility, setVisibility] = useState(post.visibility || 'public');
+  const [body, setBody] = useState(post.body);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [privacyOpen, setPrivacyOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editText, setEditText] = useState(post.body);
+  const [saving, setSaving] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [comments, setComments] = useState<CommentItem[]>([]);
   const [commentText, setCommentText] = useState('');
   const [loadingComments, setLoadingComments] = useState(false);
   const [sending, setSending] = useState(false);
 
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setMeId(data.user?.id || null));
+  }, []);
+
+  // Keep local reaction in sync only when server value is present
+  useEffect(() => {
+    if (post.my_reaction) setReactionLocal(post.my_reaction);
+  }, [post.my_reaction]);
+
+  const isOwner = !!meId && (meId === post.author_id || meId === user.id);
   const name = user.display_name || user.handle;
   const imageUrls =
     post.image_urls?.length ? post.image_urls : post.image_url ? [post.image_url] : [];
@@ -82,8 +105,10 @@ export function PostCard({ post }: Props) {
 
   const applyReaction = async (type: string | null) => {
     const prev = reaction;
+    const prevCount = likeCount;
     const had = !!prev;
     const next = type === prev ? null : type;
+
     setReactionLocal(next);
     setLikeCount((c) => {
       if (had && !next) return Math.max(0, c - 1);
@@ -91,10 +116,13 @@ export function PostCard({ post }: Props) {
       return c;
     });
     setPickerOpen(false);
+
     const { error } = await setReaction(post.id, next);
     if (error) {
+      // only revert if the reaction write truly failed
       setReactionLocal(prev);
-      setLikeCount(post.likes_count);
+      setLikeCount(prevCount);
+      console.warn('reaction failed', error.message);
     }
   };
 
@@ -137,17 +165,14 @@ export function PostCard({ post }: Props) {
       typeof window !== 'undefined'
         ? `${window.location.origin}/post/${post.id}`
         : `https://feel-mix.vercel.app/post/${post.id}`;
-    const message = post.body.slice(0, 120);
-
     try {
       if (typeof navigator !== 'undefined' && (navigator as any).share) {
-        await (navigator as any).share({ title: 'Krimie', text: message, url });
+        await (navigator as any).share({ title: 'Krimie', text: body.slice(0, 120), url });
         return;
       }
     } catch {
-      // cancelled
+      /* cancelled */
     }
-
     try {
       if (typeof navigator !== 'undefined' && navigator.clipboard) {
         await navigator.clipboard.writeText(url);
@@ -155,10 +180,56 @@ export function PostCard({ post }: Props) {
         return;
       }
     } catch {
-      // fall through
+      /* fall through */
     }
-
     Alert.alert('Share', url);
+  };
+
+  const onDelete = () => {
+    setMenuOpen(false);
+    Alert.alert('Delete post', 'This cannot be undone.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          const { error } = await deletePost(post.id);
+          if (error) {
+            Alert.alert('Could not delete', error.message);
+            return;
+          }
+          onRemoved?.(post.id);
+        },
+      },
+    ]);
+  };
+
+  const saveEdit = async () => {
+    if (!editText.trim()) {
+      Alert.alert('Empty post', 'Write something before saving.');
+      return;
+    }
+    setSaving(true);
+    const { error } = await updatePostBody(post.id, editText);
+    setSaving(false);
+    if (error) {
+      Alert.alert('Could not save', error.message);
+      return;
+    }
+    setBody(editText.trim());
+    setEditOpen(false);
+  };
+
+  const setPrivacy = async (v: 'public' | 'followers' | 'private') => {
+    setSaving(true);
+    const { error } = await updatePostVisibility(post.id, v);
+    setSaving(false);
+    if (error) {
+      Alert.alert('Could not update privacy', error.message);
+      return;
+    }
+    setVisibility(v);
+    setPrivacyOpen(false);
   };
 
   return (
@@ -185,16 +256,23 @@ export function PostCard({ post }: Props) {
                 <AppIcon name="checkmark-circle" size={14} color={colors.primary} />
               ) : null}
             </View>
-            <Text style={styles.meta}>{formatRelativeTime(post.created_at)} · 🌐</Text>
+            <Text style={styles.meta}>
+              {formatRelativeTime(post.created_at)}
+              {visibility === 'private'
+                ? ' · Private'
+                : visibility === 'followers'
+                  ? ' · Followers'
+                  : ' · 🌐'}
+            </Text>
           </View>
         </Pressable>
-        <Pressable hitSlop={12} style={styles.moreBtn}>
+        <Pressable hitSlop={12} style={styles.moreBtn} onPress={() => setMenuOpen(true)}>
           <AppIcon name="ellipsis-horizontal" size={18} color={colors.textMuted} />
         </Pressable>
       </View>
 
       <Pressable onPress={openPost}>
-        {post.body ? <Text style={styles.body}>{post.body}</Text> : null}
+        {body ? <Text style={styles.body}>{body}</Text> : null}
       </Pressable>
 
       <Pressable onPress={openPost}>
@@ -255,12 +333,7 @@ export function PostCard({ post }: Props) {
             {reaction ? REACTIONS.find((r) => r.type === reaction)?.label || 'Like' : 'Like'}
           </Text>
         </Pressable>
-        <Pressable
-          style={styles.action}
-          onPress={() => {
-            openComments();
-          }}
-        >
+        <Pressable style={styles.action} onPress={openComments}>
           <AppIcon name="chatbubble-outline" size={17} color={colors.textSecondary} />
           <Text style={styles.actionLabel}>Comment</Text>
         </Pressable>
@@ -279,6 +352,112 @@ export function PostCard({ post }: Props) {
           <Text style={styles.actionLabel}>Share</Text>
         </Pressable>
       </View>
+
+      {/* Post menu */}
+      <Modal visible={menuOpen} transparent animationType="fade" onRequestClose={() => setMenuOpen(false)}>
+        <Pressable style={styles.menuBackdrop} onPress={() => setMenuOpen(false)}>
+          <View style={styles.menuSheet}>
+            {isOwner ? (
+              <>
+                <Pressable
+                  style={styles.menuItem}
+                  onPress={() => {
+                    setMenuOpen(false);
+                    setEditText(body);
+                    setEditOpen(true);
+                  }}
+                >
+                  <Text style={styles.menuText}>Edit post</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.menuItem}
+                  onPress={() => {
+                    setMenuOpen(false);
+                    setPrivacyOpen(true);
+                  }}
+                >
+                  <Text style={styles.menuText}>Change privacy</Text>
+                </Pressable>
+                <Pressable style={styles.menuItem} onPress={onDelete}>
+                  <Text style={[styles.menuText, { color: '#F87171' }]}>Delete</Text>
+                </Pressable>
+              </>
+            ) : (
+              <Pressable
+                style={styles.menuItem}
+                onPress={() => {
+                  setMenuOpen(false);
+                  Alert.alert('Report', 'Thanks. We will review this post.');
+                }}
+              >
+                <Text style={styles.menuText}>Report post</Text>
+              </Pressable>
+            )}
+            <Pressable style={styles.menuItem} onPress={() => setMenuOpen(false)}>
+              <Text style={[styles.menuText, { color: colors.textMuted }]}>Cancel</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
+
+      {/* Privacy picker */}
+      <Modal visible={privacyOpen} transparent animationType="fade" onRequestClose={() => setPrivacyOpen(false)}>
+        <Pressable style={styles.menuBackdrop} onPress={() => setPrivacyOpen(false)}>
+          <View style={styles.menuSheet}>
+            <Text style={styles.menuTitle}>Who can see this?</Text>
+            {(
+              [
+                { id: 'public', label: 'Public' },
+                { id: 'followers', label: 'Followers only' },
+                { id: 'private', label: 'Only me' },
+              ] as const
+            ).map((opt) => (
+              <Pressable
+                key={opt.id}
+                style={styles.menuItem}
+                onPress={() => setPrivacy(opt.id)}
+                disabled={saving}
+              >
+                <Text
+                  style={[
+                    styles.menuText,
+                    visibility === opt.id && { color: colors.primary, fontWeight: '800' },
+                  ]}
+                >
+                  {opt.label}
+                  {visibility === opt.id ? ' ✓' : ''}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
+
+      {/* Edit body */}
+      <Modal visible={editOpen} animationType="slide" onRequestClose={() => setEditOpen(false)}>
+        <View style={styles.editRoot}>
+          <View style={styles.editHeader}>
+            <Pressable onPress={() => setEditOpen(false)}>
+              <Text style={styles.cancel}>Cancel</Text>
+            </Pressable>
+            <Text style={styles.editTitle}>Edit post</Text>
+            <Pressable onPress={saveEdit} disabled={saving}>
+              {saving ? (
+                <ActivityIndicator color={colors.primary} />
+              ) : (
+                <Text style={styles.done}>Save</Text>
+              )}
+            </Pressable>
+          </View>
+          <TextInput
+            style={styles.editInput}
+            multiline
+            value={editText}
+            onChangeText={setEditText}
+            placeholderTextColor={colors.textMuted}
+          />
+        </View>
+      </Modal>
 
       <Modal visible={commentsOpen} animationType="slide" transparent onRequestClose={() => setCommentsOpen(false)}>
         <KeyboardAvoidingView
@@ -390,9 +569,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 15,
   },
-  statusEmoji: {
-    fontSize: 13,
-  },
+  statusEmoji: { fontSize: 13 },
   meta: {
     color: colors.textMuted,
     fontSize: 12,
@@ -432,16 +609,9 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: colors.surface,
   },
-  reactionOverlap: {
-    marginLeft: -6,
-  },
-  reactionEmoji: {
-    fontSize: 9,
-  },
-  statText: {
-    color: colors.textMuted,
-    fontSize: 12,
-  },
+  reactionOverlap: { marginLeft: -6 },
+  reactionEmoji: { fontSize: 9 },
+  statText: { color: colors.textMuted, fontSize: 12 },
   picker: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -460,9 +630,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  pickerItemActive: {
-    backgroundColor: 'rgba(255,61,138,0.15)',
-  },
+  pickerItemActive: { backgroundColor: 'rgba(255,61,138,0.15)' },
   pickerEmoji: { fontSize: 22 },
   actions: {
     flexDirection: 'row',
@@ -482,8 +650,55 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-  actionLabelActive: {
-    color: colors.primary,
+  actionLabelActive: { color: colors.primary },
+  menuBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    justifyContent: 'flex-end',
+  },
+  menuSheet: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    paddingBottom: spacing.xxl,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  menuTitle: {
+    color: colors.textMuted,
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.sm,
+  },
+  menuItem: {
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  menuText: { color: colors.text, fontSize: 16, fontWeight: '600' },
+  editRoot: { flex: 1, backgroundColor: colors.bg, paddingTop: spacing.xxl },
+  editHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+  },
+  cancel: { color: colors.textSecondary, fontSize: 15 },
+  editTitle: { color: colors.text, fontWeight: '700', fontSize: 16 },
+  done: { color: colors.primary, fontWeight: '700', fontSize: 15 },
+  editInput: {
+    margin: spacing.xl,
+    minHeight: 160,
+    color: colors.text,
+    fontSize: 16,
+    lineHeight: 24,
+    textAlignVertical: 'top',
   },
   modalRoot: { flex: 1, justifyContent: 'flex-end' },
   modalBackdrop: {
