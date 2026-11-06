@@ -17,18 +17,7 @@ import { lifeEvents } from '@/data/mock';
 import { VibeCard } from '@/components/VibeCard';
 import { AppIcon } from '@/components/AppIcon';
 import { createPostWithVibe } from '@/lib/posts';
-import type { VibeEmbed } from '@/data/mock';
-
-const MOCK_RESULT: VibeEmbed = {
-  moodTitle: 'Echoes of What Was',
-  moodSubtitle: 'Soft, honest songs and stories that understand.',
-  trackName: 'The Night We Met',
-  trackArtist: 'Lord Huron',
-  movieTitle: 'Eternal Sunshine of the Spotless Mind',
-  movieYear: '2004',
-  movieDirector: 'Michel Gondry',
-  coverUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400',
-};
+import { requestMoodMix, type MoodMixResult } from '@/lib/mood';
 
 export default function MoodScreen() {
   const router = useRouter();
@@ -36,15 +25,29 @@ export default function MoodScreen() {
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
   const [sharing, setSharing] = useState(false);
-  const [result, setResult] = useState<VibeEmbed | null>(null);
+  const [result, setResult] = useState<MoodMixResult | null>(null);
 
-  const run = () => {
+  const run = async () => {
+    if (!text.trim() && !selected) {
+      Alert.alert('Add a mood', 'Describe how you feel or pick a life event.');
+      return;
+    }
     setLoading(true);
     setResult(null);
-    setTimeout(() => {
-      setResult(MOCK_RESULT);
-      setLoading(false);
-    }, 900);
+    const { result: mix, error } = await requestMoodMix({
+      text,
+      lifeEvent: selected,
+    });
+    setLoading(false);
+    if (error || !mix) {
+      Alert.alert(
+        'Mood Mix',
+        error ||
+          'Could not generate a mix. Make sure GROQ_API_KEY is set in Supabase Edge Function secrets.'
+      );
+      return;
+    }
+    setResult(mix);
   };
 
   const shareToFeed = async () => {
@@ -129,8 +132,8 @@ export default function MoodScreen() {
             <VibeCard vibe={result} />
             <Text style={styles.aiLabel}>AI insight</Text>
             <Text style={styles.aiText}>
-              This mix captures the ache of letting go, the quiet memories, and
-              the hope that comes after.
+              {result.insight ||
+                'This mix was chosen to match the emotional tone of what you shared.'}
             </Text>
             <Pressable
               style={[styles.shareBtn, sharing && { opacity: 0.7 }]}

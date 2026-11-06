@@ -37,6 +37,7 @@ export default function RootLayout() {
             name="add-story"
             options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
           />
+          <Stack.Screen name="notifications" />
           <Stack.Screen name="story/[id]" />
           <Stack.Screen name="post/[id]" />
           <Stack.Screen name="user/[id]" />

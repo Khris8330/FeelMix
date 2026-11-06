@@ -18,6 +18,7 @@ import { MenuSheet } from '@/components/MenuSheet';
 import { AppIcon } from '@/components/AppIcon';
 import { fetchMyProfile, initials, type Profile } from '@/lib/profile';
 import { fetchFeedPosts, type FeedPost } from '@/lib/posts';
+import { unreadNotificationCount } from '@/lib/notifications';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -26,11 +27,17 @@ export default function HomeScreen() {
   const [feed, setFeed] = useState<FeedPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [unread, setUnread] = useState(0);
 
   const load = useCallback(async () => {
-    const [profile, posts] = await Promise.all([fetchMyProfile(), fetchFeedPosts()]);
+    const [profile, posts, count] = await Promise.all([
+      fetchMyProfile(),
+      fetchFeedPosts(),
+      unreadNotificationCount(),
+    ]);
     setMe(profile);
     setFeed(posts);
+    setUnread(count);
     setLoading(false);
     setRefreshing(false);
   }, []);
@@ -53,9 +60,13 @@ export default function HomeScreen() {
           <Pressable hitSlop={10} onPress={() => router.push('/mood')} style={styles.iconBtn}>
             <AppIcon name="musical-notes" size={22} color={colors.text} />
           </Pressable>
-          <Pressable hitSlop={10} style={styles.iconBtn}>
+          <Pressable
+            hitSlop={10}
+            style={styles.iconBtn}
+            onPress={() => router.push('/notifications')}
+          >
             <AppIcon name="notifications-outline" size={22} color={colors.text} />
-            <View style={styles.badgeDot} />
+            {unread > 0 ? <View style={styles.badgeDot} /> : null}
           </Pressable>
           <Pressable hitSlop={10} onPress={() => setMenuOpen(true)} style={styles.iconBtn}>
             <AppIcon name="menu" size={22} color={colors.text} />
