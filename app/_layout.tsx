@@ -38,6 +38,7 @@ export default function RootLayout() {
             options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
           />
           <Stack.Screen name="story/[id]" />
+          <Stack.Screen name="post/[id]" />
           <Stack.Screen name="user/[id]" />
         </Stack>
       </SafeAreaProvider>
