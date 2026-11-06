@@ -5,7 +5,6 @@ import {
   StyleSheet,
   FlatList,
   Pressable,
-  TextInput,
   Image,
   RefreshControl,
   ActivityIndicator,
@@ -72,7 +71,12 @@ export default function HomeScreen() {
         <FlatList
           data={feed}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <PostCard post={item} />}
+          renderItem={({ item }) => (
+            <PostCard
+              post={item}
+              onRemoved={(id) => setFeed((list) => list.filter((p) => p.id !== id))}
+            />
+          )}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
