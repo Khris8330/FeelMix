@@ -27,6 +27,7 @@ import {
 import { initials } from '@/lib/profile';
 import { VibeCard } from './VibeCard';
 import { AppIcon } from './AppIcon';
+import { PostImages } from './PostImages';
 
 type Props = {
   post: FeedPost;
@@ -61,6 +62,9 @@ export function PostCard({ post }: Props) {
   const [sending, setSending] = useState(false);
 
   const name = user.display_name || user.handle;
+  const imageUrls =
+    post.image_urls?.length ? post.image_urls : post.image_url ? [post.image_url] : [];
+
   const vibe = post.vibe
     ? {
         moodTitle: post.vibe.mood_title,
@@ -73,6 +77,8 @@ export function PostCard({ post }: Props) {
         coverUrl: post.vibe.cover_url || undefined,
       }
     : null;
+
+  const openPost = () => router.push(`/post/${post.id}`);
 
   const applyReaction = async (type: string | null) => {
     const prev = reaction;
@@ -129,21 +135,17 @@ export function PostCard({ post }: Props) {
   const onShare = async () => {
     const url =
       typeof window !== 'undefined'
-        ? `${window.location.origin}/?post=${post.id}`
-        : `https://feel-mix.vercel.app/?post=${post.id}`;
+        ? `${window.location.origin}/post/${post.id}`
+        : `https://feel-mix.vercel.app/post/${post.id}`;
     const message = post.body.slice(0, 120);
 
     try {
       if (typeof navigator !== 'undefined' && (navigator as any).share) {
-        await (navigator as any).share({
-          title: 'Krimie',
-          text: message,
-          url,
-        });
+        await (navigator as any).share({ title: 'Krimie', text: message, url });
         return;
       }
     } catch {
-      // user cancelled or unsupported
+      // cancelled
     }
 
     try {
@@ -191,11 +193,13 @@ export function PostCard({ post }: Props) {
         </Pressable>
       </View>
 
-      <Text style={styles.body}>{post.body}</Text>
+      <Pressable onPress={openPost}>
+        {post.body ? <Text style={styles.body}>{post.body}</Text> : null}
+      </Pressable>
 
-      {post.image_url ? (
-        <Image source={{ uri: post.image_url }} style={styles.image} />
-      ) : null}
+      <Pressable onPress={openPost}>
+        <PostImages urls={imageUrls} />
+      </Pressable>
 
       {vibe ? <VibeCard vibe={vibe} compact /> : null}
 
@@ -214,9 +218,11 @@ export function PostCard({ post }: Props) {
           </View>
           <Text style={styles.statText}>{likeCount}</Text>
         </View>
-        <Text style={styles.statText}>
-          {commentCount} comments · {repostCount} reposts
-        </Text>
+        <Pressable onPress={openPost}>
+          <Text style={styles.statText}>
+            {commentCount} comments · {repostCount} reposts
+          </Text>
+        </Pressable>
       </View>
 
       {pickerOpen ? (
@@ -249,7 +255,12 @@ export function PostCard({ post }: Props) {
             {reaction ? REACTIONS.find((r) => r.type === reaction)?.label || 'Like' : 'Like'}
           </Text>
         </Pressable>
-        <Pressable style={styles.action} onPress={openComments}>
+        <Pressable
+          style={styles.action}
+          onPress={() => {
+            openComments();
+          }}
+        >
           <AppIcon name="chatbubble-outline" size={17} color={colors.textSecondary} />
           <Text style={styles.actionLabel}>Comment</Text>
         </Pressable>
@@ -393,13 +404,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
     marginBottom: spacing.md,
-  },
-  image: {
-    width: '100%',
-    height: 210,
-    borderRadius: radii.lg,
-    marginBottom: spacing.md,
-    backgroundColor: colors.surfaceElevated,
   },
   stats: {
     flexDirection: 'row',
