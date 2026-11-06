@@ -13,7 +13,7 @@ export async function uploadPostImage(file: {
     : mime.includes('webp')
       ? 'webp'
       : 'jpg';
-  const path = `${auth.user.id}/posts/${Date.now()}.${ext}`;
+  const path = `${auth.user.id}/posts/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
 
   const res = await fetch(file.uri);
   const body = await res.blob();
@@ -26,4 +26,16 @@ export async function uploadPostImage(file: {
 
   const { data: pub } = supabase.storage.from('media').getPublicUrl(path);
   return { error: null, url: pub.publicUrl };
+}
+
+export async function uploadManyPostImages(
+  files: { uri: string; type?: string }[]
+): Promise<{ urls: string[]; error: Error | null }> {
+  const urls: string[] = [];
+  for (const file of files) {
+    const { error, url } = await uploadPostImage(file);
+    if (error || !url) return { urls, error: error || new Error('Upload failed') };
+    urls.push(url);
+  }
+  return { urls, error: null };
 }

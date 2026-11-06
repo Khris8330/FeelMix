@@ -17,71 +17,98 @@ import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { colors, radii, spacing } from '@/constants/theme';
 import { AppIcon } from '@/components/AppIcon';
+import { ImageEditorModal } from '@/components/ImageEditorModal';
 import { fetchMyProfile, initials, type Profile } from '@/lib/profile';
 import { createPost } from '@/lib/posts';
-import { uploadPostImage } from '@/lib/media';
+import { uploadManyPostImages } from '@/lib/media';
+
+type LocalImage = {
+  id: string;
+  uri: string;
+  type?: string;
+};
+
+const MAX_IMAGES = 10;
 
 export default function CreateScreen() {
   const router = useRouter();
   const [body, setBody] = useState('');
   const [me, setMe] = useState<Profile | null>(null);
   const [posting, setPosting] = useState(false);
-  const [imageUri, setImageUri] = useState<string | null>(null);
-  const [imageMime, setImageMime] = useState('image/jpeg');
+  const [images, setImages] = useState<LocalImage[]>([]);
+  const [editId, setEditId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchMyProfile().then(setMe);
   }, []);
 
   const pickPhoto = async () => {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted && Platform.OS !== 'web') {
-      Alert.alert('Permission needed', 'Allow photo access to attach an image.');
+    const remaining = MAX_IMAGES - images.length;
+    if (remaining <= 0) {
+      Alert.alert('Limit reached', `You can add up to ${MAX_IMAGES} photos.`);
       return;
     }
+
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted && Platform.OS !== 'web') {
+      Alert.alert('Permission needed', 'Allow photo access to attach images.');
+      return;
+    }
+
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
-      quality: 0.7,
-      allowsEditing: true,
+      quality: 0.8,
+      allowsMultipleSelection: true,
+      selectionLimit: remaining,
     });
-    if (result.canceled || !result.assets?.[0]) return;
-    setImageUri(result.assets[0].uri);
-    setImageMime(result.assets[0].mimeType || 'image/jpeg');
+
+    if (result.canceled || !result.assets?.length) return;
+
+    const next: LocalImage[] = result.assets.map((a, i) => ({
+      id: `${Date.now()}-${i}-${Math.random().toString(36).slice(2, 6)}`,
+      uri: a.uri,
+      type: a.mimeType || 'image/jpeg',
+    }));
+    setImages((prev) => [...prev, ...next].slice(0, MAX_IMAGES));
+  };
+
+  const removeImage = (id: string) => {
+    setImages((prev) => prev.filter((img) => img.id !== id));
   };
 
   const publish = async () => {
-    if (!body.trim() && !imageUri) {
+    if (!body.trim() && !images.length) {
       Alert.alert('Add something', 'Write a thought or add a photo.');
       return;
     }
     setPosting(true);
 
-    let imageUrl: string | null = null;
-    if (imageUri) {
-      const { error: upError, url } = await uploadPostImage({
-        uri: imageUri,
-        type: imageMime,
-      });
-      if (upError || !url) {
+    let urls: string[] = [];
+    if (images.length) {
+      const { urls: uploaded, error: upError } = await uploadManyPostImages(
+        images.map((img) => ({ uri: img.uri, type: img.type }))
+      );
+      if (upError || !uploaded.length) {
         setPosting(false);
         Alert.alert('Photo upload failed', upError?.message || 'Try again');
         return;
       }
-      imageUrl = url;
+      urls = uploaded;
     }
 
-    const { error } = await createPost(body.trim() || ' ', imageUrl);
+    const { error } = await createPost(body.trim(), urls);
     setPosting(false);
     if (error) {
       Alert.alert('Could not post', error.message);
       return;
     }
     setBody('');
-    setImageUri(null);
+    setImages([]);
     router.replace('/(tabs)');
   };
 
   const name = me?.display_name || me?.handle || 'You';
+  const editing = images.find((img) => img.id === editId) || null;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -128,17 +155,37 @@ export default function CreateScreen() {
             autoFocus
             editable={!posting}
           />
-          {imageUri ? (
-            <View style={styles.previewWrap}>
-              <Image source={{ uri: imageUri }} style={styles.preview} />
-              <Pressable
-                style={styles.removePhoto}
-                onPress={() => setImageUri(null)}
-                disabled={posting}
-              >
-                <AppIcon name="close" size={16} color={colors.white} />
-              </Pressable>
-            </View>
+
+          {images.length ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.gallery}
+            >
+              {images.map((img) => (
+                <View key={img.id} style={styles.thumbWrap}>
+                  <Pressable onPress={() => setEditId(img.id)}>
+                    <Image source={{ uri: img.uri }} style={styles.thumb} />
+                    <View style={styles.editBadge}>
+                      <Text style={styles.editBadgeText}>Edit</Text>
+                    </View>
+                  </Pressable>
+                  <Pressable
+                    style={styles.removePhoto}
+                    onPress={() => removeImage(img.id)}
+                    disabled={posting}
+                  >
+                    <AppIcon name="close" size={14} color={colors.white} />
+                  </Pressable>
+                </View>
+              ))}
+              {images.length < MAX_IMAGES ? (
+                <Pressable style={styles.addMore} onPress={pickPhoto} disabled={posting}>
+                  <AppIcon name="add" size={22} color={colors.primary} />
+                  <Text style={styles.addMoreText}>Add</Text>
+                </Pressable>
+              ) : null}
+            </ScrollView>
           ) : null}
         </ScrollView>
 
@@ -149,10 +196,26 @@ export default function CreateScreen() {
           </Pressable>
           <Pressable style={styles.tool} onPress={pickPhoto} disabled={posting}>
             <AppIcon name="image-outline" size={20} color={colors.textSecondary} />
-            <Text style={styles.toolLabel}>Photo</Text>
+            <Text style={styles.toolLabel}>
+              Photo{images.length ? ` (${images.length})` : ''}
+            </Text>
           </Pressable>
         </View>
       </KeyboardAvoidingView>
+
+      {editing ? (
+        <ImageEditorModal
+          visible
+          uri={editing.uri}
+          onClose={() => setEditId(null)}
+          onSave={(uri) => {
+            setImages((prev) =>
+              prev.map((img) => (img.id === editing.id ? { ...img, uri } : img))
+            );
+            setEditId(null);
+          }}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -206,30 +269,58 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 17,
     lineHeight: 24,
-    minHeight: 120,
+    minHeight: 100,
     textAlignVertical: 'top',
   },
-  previewWrap: {
-    marginTop: spacing.lg,
-    position: 'relative',
+  gallery: {
+    gap: spacing.md,
+    paddingVertical: spacing.md,
   },
-  preview: {
-    width: '100%',
-    height: 220,
+  thumbWrap: {
+    position: 'relative',
+    width: 140,
+    height: 140,
+  },
+  thumb: {
+    width: 140,
+    height: 140,
     borderRadius: radii.lg,
     backgroundColor: colors.surface,
   },
+  editBadge: {
+    position: 'absolute',
+    left: 8,
+    bottom: 8,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: radii.pill,
+  },
+  editBadgeText: { color: colors.white, fontSize: 11, fontWeight: '700' },
   removePhoto: {
     position: 'absolute',
-    top: 10,
-    right: 10,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    top: 8,
+    right: 8,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     backgroundColor: 'rgba(0,0,0,0.6)',
     alignItems: 'center',
     justifyContent: 'center',
   },
+  addMore: {
+    width: 140,
+    height: 140,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: colors.surface,
+  },
+  addMoreText: { color: colors.primary, fontWeight: '700', fontSize: 13 },
   tools: {
     flexDirection: 'row',
     gap: spacing.lg,

@@ -26,6 +26,7 @@ export type FeedPost = {
   id: string;
   body: string;
   image_url: string | null;
+  image_urls: string[];
   likes_count: number;
   comments_count: number;
   reposts_count: number;
@@ -58,10 +59,16 @@ function mapRow(
 ): FeedPost {
   const author = row.profiles || row.author || {};
   const vibeRow = Array.isArray(row.vibes) ? row.vibes[0] : row.vibes;
+  const images = Array.isArray(row.post_images)
+    ? [...row.post_images].sort((a: any, b: any) => a.sort_order - b.sort_order).map((i: any) => i.url)
+    : [];
+  if (!images.length && row.image_url) images.push(row.image_url);
+
   return {
     id: row.id,
     body: row.body,
-    image_url: row.image_url,
+    image_url: images[0] || row.image_url || null,
+    image_urls: images,
     likes_count: row.likes_count ?? 0,
     comments_count: row.comments_count ?? 0,
     reposts_count: row.reposts_count ?? 0,
@@ -142,7 +149,8 @@ async function engagementSets(postIds: string[]) {
 const postSelect = `
   id, body, image_url, likes_count, comments_count, reposts_count, shares_count, created_at,
   profiles!posts_author_id_fkey ( id, handle, display_name, avatar_url, is_verified, status_emoji ),
-  vibes ( mood_title, mood_subtitle, track_name, track_artist, movie_title, movie_year, movie_director, cover_url )
+  vibes ( mood_title, mood_subtitle, track_name, track_artist, movie_title, movie_year, movie_director, cover_url ),
+  post_images ( url, sort_order )
 `;
 
 export async function fetchFeedPosts(limit = 40): Promise<FeedPost[]> {
@@ -156,18 +164,15 @@ export async function fetchFeedPosts(limit = 40): Promise<FeedPost[]> {
     .order('created_at', { ascending: false })
     .limit(limit);
 
-  // Prefer following + self when the user follows anyone
   if (me) {
     const followingIds = await getFollowingIds();
     if (followingIds.length > 0) {
-      const authors = [...followingIds, me];
-      query = query.in('author_id', authors);
+      query = query.in('author_id', [...followingIds, me]);
     }
   }
 
   let { data, error } = await query;
 
-  // Fallback to global public feed if following feed is empty
   if ((!data || data.length === 0) && !error) {
     const fallback = await supabase
       .from('posts')
@@ -203,22 +208,35 @@ export async function fetchPostsByAuthor(authorId: string): Promise<FeedPost[]> 
   return data.map((r) => mapRow(r, liked, reposted, myReactions));
 }
 
-export async function createPost(body: string, imageUrl?: string | null) {
+export async function createPost(body: string, imageUrls?: string[] | null) {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return { error: new Error('Not signed in'), post: null };
 
-  const { data, error } = await supabase
+  const urls = (imageUrls || []).filter(Boolean);
+  const { data: post, error } = await supabase
     .from('posts')
     .insert({
       author_id: auth.user.id,
-      body: body.trim() || (imageUrl ? '' : ''),
-      image_url: imageUrl || null,
+      body: body.trim(),
+      image_url: urls[0] || null,
       visibility: 'public',
     })
     .select('id')
     .single();
 
-  return { error, post: data };
+  if (error || !post) return { error: error || new Error('Post failed'), post: null };
+
+  if (urls.length) {
+    const rows = urls.map((url, i) => ({
+      post_id: post.id,
+      url,
+      sort_order: i,
+    }));
+    const { error: imgErr } = await supabase.from('post_images').insert(rows);
+    if (imgErr) console.warn('post_images', imgErr.message);
+  }
+
+  return { error: null, post };
 }
 
 export async function createPostWithVibe(
@@ -259,10 +277,7 @@ export async function createPostWithVibe(
     user_id: auth.user.id,
     prompt_text: body.trim(),
     life_event_key: lifeEventKey || null,
-    result_track_json: {
-      name: vibe.trackName,
-      artist: vibe.trackArtist,
-    },
+    result_track_json: { name: vibe.trackName, artist: vibe.trackArtist },
     result_movie_json: {
       title: vibe.movieTitle,
       year: vibe.movieYear,
@@ -292,7 +307,6 @@ export async function toggleLike(postId: string, currentlyLiked: boolean) {
   return { error };
 }
 
-/** Set or clear a reaction emoji type (love, haha, wow, sad, angry, fire). */
 export async function setReaction(postId: string, type: string | null) {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return { error: new Error('Not signed in') };
