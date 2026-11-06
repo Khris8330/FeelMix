@@ -32,6 +32,8 @@ export type FeedPost = {
   reposts_count: number;
   shares_count: number;
   created_at: string;
+  visibility: string;
+  author_id: string;
   author: FeedAuthor;
   vibe: FeedVibe | null;
   liked_by_me: boolean;
@@ -74,6 +76,8 @@ function mapRow(
     reposts_count: row.reposts_count ?? 0,
     shares_count: row.shares_count ?? 0,
     created_at: row.created_at,
+    visibility: row.visibility || 'public',
+    author_id: row.author_id || author.id,
     author: {
       id: author.id,
       handle: author.handle,
@@ -147,7 +151,7 @@ async function engagementSets(postIds: string[]) {
 }
 
 const postSelect = `
-  id, body, image_url, likes_count, comments_count, reposts_count, shares_count, created_at,
+  id, body, image_url, likes_count, comments_count, reposts_count, shares_count, created_at, visibility, author_id,
   profiles!posts_author_id_fkey ( id, handle, display_name, avatar_url, is_verified, status_emoji ),
   vibes ( mood_title, mood_subtitle, track_name, track_artist, movie_title, movie_year, movie_director, cover_url ),
   post_images ( url, sort_order )
@@ -288,46 +292,35 @@ export async function createPostWithVibe(
   return { error: null, post };
 }
 
-export async function toggleLike(postId: string, currentlyLiked: boolean) {
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return { error: new Error('Not signed in') };
-
-  if (currentlyLiked) {
-    const { error } = await supabase
-      .from('likes')
-      .delete()
-      .eq('user_id', auth.user.id)
-      .eq('post_id', postId);
-    return { error };
-  }
-  const { error } = await supabase.from('likes').insert({
-    user_id: auth.user.id,
-    post_id: postId,
-  });
-  return { error };
-}
-
 export async function setReaction(postId: string, type: string | null) {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return { error: new Error('Not signed in') };
 
-  await supabase.from('reactions').delete().eq('user_id', auth.user.id).eq('post_id', postId);
-  await supabase.from('likes').delete().eq('user_id', auth.user.id).eq('post_id', postId);
+  const uid = auth.user.id;
+
+  // Clear previous
+  await supabase.from('reactions').delete().eq('user_id', uid).eq('post_id', postId);
+  await supabase.from('likes').delete().eq('user_id', uid).eq('post_id', postId);
 
   if (!type) return { error: null };
 
-  const { error: rErr } = await supabase.from('reactions').insert({
-    user_id: auth.user.id,
-    post_id: postId,
-    type,
-  });
-  if (rErr) return { error: rErr };
+  // Upsert reaction
+  const { error: rErr } = await supabase.from('reactions').upsert(
+    { user_id: uid, post_id: postId, type },
+    { onConflict: 'user_id,post_id' }
+  );
+  if (rErr) {
+    console.warn('setReaction reaction', rErr.message);
+    return { error: rErr };
+  }
 
-  if (type === 'love' || type === 'like') {
-    await supabase.from('likes').insert({
-      user_id: auth.user.id,
-      post_id: postId,
-    });
+  // Any reaction also counts as a like for the counter trigger
+  const { error: lErr } = await supabase.from('likes').insert({
+    user_id: uid,
+    post_id: postId,
+  });
+  if (lErr && !lErr.message?.includes('duplicate')) {
+    console.warn('setReaction like', lErr.message);
   }
 
   return { error: null };
@@ -394,4 +387,46 @@ export async function addComment(postId: string, body: string) {
     .single();
 
   return { error, comment: data };
+}
+
+export async function deletePost(postId: string) {
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return { error: new Error('Not signed in') };
+
+  const { error } = await supabase
+    .from('posts')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', postId)
+    .eq('author_id', auth.user.id);
+
+  return { error };
+}
+
+export async function updatePostBody(postId: string, body: string) {
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return { error: new Error('Not signed in') };
+
+  const { error } = await supabase
+    .from('posts')
+    .update({ body: body.trim() })
+    .eq('id', postId)
+    .eq('author_id', auth.user.id);
+
+  return { error };
+}
+
+export async function updatePostVisibility(
+  postId: string,
+  visibility: 'public' | 'followers' | 'private'
+) {
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return { error: new Error('Not signed in') };
+
+  const { error } = await supabase
+    .from('posts')
+    .update({ visibility })
+    .eq('id', postId)
+    .eq('author_id', auth.user.id);
+
+  return { error };
 }
