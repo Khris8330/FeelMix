@@ -3,6 +3,10 @@ import type { VibeEmbed } from '@/data/mock';
 
 export type MoodMixResult = VibeEmbed & { insight?: string };
 
+const FUNCTIONS_URL = 'https://zdstgohvufnoafoiizvu.supabase.co/functions/v1/mood-mix';
+const ANON_KEY =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpkc3Rnb2h2dWZub2Fmb2lpenZ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM2NjM1NDUsImV4cCI6MjEwOTIzOTU0NX0.s9rS79uuUXsN_9oSofmpXwXu7KLtd_lMikTt965bREw';
+
 export async function requestMoodMix(input: {
   text: string;
   lifeEvent: string | null;
@@ -13,16 +17,13 @@ export async function requestMoodMix(input: {
     return { result: null, error: 'Please sign in to use Mood Mix.' };
   }
 
-  const url = `${supabase['supabaseUrl'] || 'https://zdstgohvufnoafoiizvu.supabase.co'}/functions/v1/mood-mix`;
-
   try {
-    const res = await fetch(url, {
+    const res = await fetch(FUNCTIONS_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
-        apikey:
-          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpkc3Rnb2h2dWZub2Fmb2lpenZ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM2NjM1NDUsImV4cCI6MjEwOTIzOTU0NX0.s9rS79uuUXsN_9oSofmpXwXu7KLtd_lMikTt965bREw',
+        apikey: ANON_KEY,
       },
       body: JSON.stringify({
         text: input.text,
