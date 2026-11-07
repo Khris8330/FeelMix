@@ -1,11 +1,14 @@
 import { supabase } from './supabase';
+import type { MoodMixResult } from './mood';
 
 export type StoryItem = {
   id: string;
   author_id: string;
-  media_url: string;
+  media_url: string | null;
   media_type: string;
   caption: string | null;
+  bg_color: string | null;
+  vibe_json: Record<string, any> | null;
   expires_at: string;
   created_at: string;
   author: {
@@ -26,7 +29,7 @@ export async function fetchActiveStories(): Promise<StoryItem[]> {
     .from('stories')
     .select(
       `
-      id, author_id, media_url, media_type, caption, expires_at, created_at,
+      id, author_id, media_url, media_type, caption, bg_color, vibe_json, expires_at, created_at,
       profiles!stories_author_id_fkey ( id, handle, display_name, avatar_url )
     `
     )
@@ -49,7 +52,6 @@ export async function fetchActiveStories(): Promise<StoryItem[]> {
     (views || []).forEach((v) => seen.add(v.story_id));
   }
 
-  // One story bubble per author (latest)
   const byAuthor = new Map<string, StoryItem>();
   for (const row of data) {
     const author = (row as any).profiles || {};
@@ -58,8 +60,10 @@ export async function fetchActiveStories(): Promise<StoryItem[]> {
       id: row.id,
       author_id: row.author_id,
       media_url: row.media_url,
-      media_type: row.media_type,
+      media_type: row.media_type || 'image',
       caption: row.caption,
+      bg_color: row.bg_color,
+      vibe_json: row.vibe_json,
       expires_at: row.expires_at,
       created_at: row.created_at,
       author: {
@@ -82,7 +86,7 @@ export async function fetchActiveStories(): Promise<StoryItem[]> {
   return list;
 }
 
-export async function createStory(mediaUrl: string, caption?: string) {
+export async function createImageStory(mediaUrl: string, caption?: string) {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return { error: new Error('Not signed in'), story: null };
 
@@ -93,6 +97,64 @@ export async function createStory(mediaUrl: string, caption?: string) {
       media_url: mediaUrl,
       media_type: 'image',
       caption: caption || null,
+    })
+    .select('id')
+    .single();
+
+  return { error, story: data };
+}
+
+/** @deprecated use createImageStory */
+export async function createStory(mediaUrl: string, caption?: string) {
+  return createImageStory(mediaUrl, caption);
+}
+
+export async function createTextStory(text: string, bgColor: string) {
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return { error: new Error('Not signed in'), story: null };
+
+  const { data, error } = await supabase
+    .from('stories')
+    .insert({
+      author_id: auth.user.id,
+      media_url: null,
+      media_type: 'text',
+      caption: text.trim(),
+      bg_color: bgColor,
+    })
+    .select('id')
+    .single();
+
+  return { error, story: data };
+}
+
+export async function createVibeStory(vibe: MoodMixResult, note?: string) {
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return { error: new Error('Not signed in'), story: null };
+
+  const caption =
+    note?.trim() ||
+    `${vibe.moodTitle} · ${vibe.trackName} · ${vibe.movieTitle}`;
+
+  const { data, error } = await supabase
+    .from('stories')
+    .insert({
+      author_id: auth.user.id,
+      media_url: vibe.coverUrl || null,
+      media_type: 'vibe',
+      caption,
+      bg_color: '#1a1020',
+      vibe_json: {
+        moodTitle: vibe.moodTitle,
+        moodSubtitle: vibe.moodSubtitle,
+        trackName: vibe.trackName,
+        trackArtist: vibe.trackArtist,
+        movieTitle: vibe.movieTitle,
+        movieYear: vibe.movieYear,
+        movieDirector: vibe.movieDirector,
+        coverUrl: vibe.coverUrl,
+        insight: vibe.insight,
+      },
     })
     .select('id')
     .single();

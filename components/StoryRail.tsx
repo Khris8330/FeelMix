@@ -15,6 +15,43 @@ import { AppIcon } from './AppIcon';
 import { fetchActiveStories, type StoryItem } from '@/lib/stories';
 import { fetchMyProfile, initials, type Profile } from '@/lib/profile';
 
+function StoryThumb({ story }: { story: StoryItem }) {
+  if (story.media_type === 'text') {
+    return (
+      <View style={[styles.thumb, { backgroundColor: story.bg_color || colors.primary }]}>
+        <Text style={styles.thumbText} numberOfLines={3}>
+          {story.caption || 'Story'}
+        </Text>
+      </View>
+    );
+  }
+
+  if (story.media_type === 'vibe') {
+    if (story.media_url) {
+      return <Image source={{ uri: story.media_url }} style={styles.thumb} />;
+    }
+    return (
+      <View style={[styles.thumb, { backgroundColor: story.bg_color || '#1a1020' }]}>
+        <Text style={styles.thumbEmoji}>🎵</Text>
+      </View>
+    );
+  }
+
+  if (story.media_url) {
+    return <Image source={{ uri: story.media_url }} style={styles.thumb} />;
+  }
+
+  const name = story.author.display_name || story.author.handle || '?';
+  if (story.author.avatar_url) {
+    return <Image source={{ uri: story.author.avatar_url }} style={styles.thumb} />;
+  }
+  return (
+    <View style={[styles.thumb, styles.avatarFallback]}>
+      <Text style={styles.avatarInitials}>{initials(name)}</Text>
+    </View>
+  );
+}
+
 export function StoryRail() {
   const router = useRouter();
   const [stories, setStories] = useState<StoryItem[]>([]);
@@ -68,10 +105,12 @@ export function StoryRail() {
               style={styles.ring}
             >
               <View style={styles.ringInner}>
-                {me?.avatar_url ? (
-                  <Image source={{ uri: me.avatar_url }} style={styles.avatar} />
+                {ownStory ? (
+                  <StoryThumb story={ownStory} />
+                ) : me?.avatar_url ? (
+                  <Image source={{ uri: me.avatar_url }} style={styles.thumb} />
                 ) : (
-                  <View style={[styles.avatar, styles.avatarFallback]}>
+                  <View style={[styles.thumb, styles.avatarFallback]}>
                     <Text style={styles.avatarInitials}>
                       {initials(me?.display_name || me?.handle || 'Y')}
                     </Text>
@@ -121,16 +160,7 @@ export function StoryRail() {
                   style={styles.ring}
                 >
                   <View style={styles.ringInner}>
-                    {story.author.avatar_url ? (
-                      <Image
-                        source={{ uri: story.author.avatar_url }}
-                        style={styles.avatar}
-                      />
-                    ) : (
-                      <View style={[styles.avatar, styles.avatarFallback]}>
-                        <Text style={styles.avatarInitials}>{initials(name)}</Text>
-                      </View>
-                    )}
+                    <StoryThumb story={story} />
                   </View>
                 </LinearGradient>
               </View>
@@ -180,13 +210,25 @@ const styles = StyleSheet.create({
     padding: 2.5,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
-  avatar: {
+  thumb: {
     width: 56,
     height: 56,
     borderRadius: 28,
     backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
   },
+  thumbText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '700',
+    textAlign: 'center',
+    paddingHorizontal: 4,
+  },
+  thumbEmoji: { fontSize: 22 },
   avatarFallback: {
     alignItems: 'center',
     justifyContent: 'center',

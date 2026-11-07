@@ -17,6 +17,7 @@ import { lifeEvents } from '@/data/mock';
 import { VibeCard } from '@/components/VibeCard';
 import { AppIcon } from '@/components/AppIcon';
 import { createPostWithVibe } from '@/lib/posts';
+import { createVibeStory } from '@/lib/stories';
 import { requestMoodMix, type MoodMixResult } from '@/lib/mood';
 
 export default function MoodScreen() {
@@ -25,6 +26,7 @@ export default function MoodScreen() {
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [storying, setStorying] = useState(false);
   const [result, setResult] = useState<MoodMixResult | null>(null);
 
   const run = async () => {
@@ -60,6 +62,18 @@ export default function MoodScreen() {
     setSharing(false);
     if (error) {
       Alert.alert('Could not share', error.message);
+      return;
+    }
+    router.replace('/(tabs)');
+  };
+
+  const shareToStory = async () => {
+    if (!result) return;
+    setStorying(true);
+    const { error } = await createVibeStory(result, text.trim() || undefined);
+    setStorying(false);
+    if (error) {
+      Alert.alert('Could not post story', error.message);
       return;
     }
     router.replace('/(tabs)');
@@ -138,7 +152,7 @@ export default function MoodScreen() {
             <Pressable
               style={[styles.shareBtn, sharing && { opacity: 0.7 }]}
               onPress={shareToFeed}
-              disabled={sharing}
+              disabled={sharing || storying}
             >
               {sharing ? (
                 <ActivityIndicator color={colors.white} />
@@ -147,6 +161,17 @@ export default function MoodScreen() {
                   <AppIcon name="share-outline" size={18} color={colors.white} />
                   <Text style={styles.shareText}>Share to feed</Text>
                 </>
+              )}
+            </Pressable>
+            <Pressable
+              style={[styles.storyBtn, storying && { opacity: 0.7 }]}
+              onPress={shareToStory}
+              disabled={sharing || storying}
+            >
+              {storying ? (
+                <ActivityIndicator color={colors.primary} />
+              ) : (
+                <Text style={styles.storyText}>Share as story</Text>
               )}
             </Pressable>
             <Text style={styles.privateNote}>
@@ -259,6 +284,15 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   shareText: { color: colors.white, fontWeight: '700', fontSize: 15 },
+  storyBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.md,
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  storyText: { color: colors.primary, fontWeight: '700', fontSize: 15 },
   privateNote: {
     color: colors.textMuted,
     fontSize: 12,
