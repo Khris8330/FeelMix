@@ -9,7 +9,6 @@ import {
   TextInput,
   ActivityIndicator,
   Platform,
-  ScrollView,
   LayoutChangeEvent,
 } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -32,11 +31,10 @@ export function ImageEditorModal({ visible, uri, onClose, onSave }: Props) {
   const [text, setText] = useState('');
   const [textColor, setTextColor] = useState('#FFFFFF');
   const [busy, setBusy] = useState(false);
-  const [mode, setMode] = useState<'adjust' | 'text'>('adjust');
+  const [mode, setMode] = useState<'crop' | 'text'>('crop');
   const [box, setBox] = useState({ w: 300, h: 300 });
   const [natural, setNatural] = useState({ w: 1, h: 1 });
 
-  // Crop rect in view coordinates
   const x = useSharedValue(40);
   const y = useSharedValue(40);
   const w = useSharedValue(220);
@@ -50,7 +48,7 @@ export function ImageEditorModal({ visible, uri, onClose, onSave }: Props) {
     if (visible) {
       setWorkingUri(uri);
       setText('');
-      setMode('adjust');
+      setMode('crop');
       Image.getSize(
         uri,
         (nw, nh) => setNatural({ w: nw, h: nh }),
@@ -105,7 +103,6 @@ export function ImageEditorModal({ visible, uri, onClose, onSave }: Props) {
   const applyCrop = async () => {
     setBusy(true);
     try {
-      // Map view crop rect → image pixels (contain fit)
       const scale = Math.min(box.w / natural.w, box.h / natural.h);
       const dispW = natural.w * scale;
       const dispH = natural.h * scale;
@@ -117,8 +114,8 @@ export function ImageEditorModal({ visible, uri, onClose, onSave }: Props) {
       const relW = Math.min(w.value, dispW - relX);
       const relH = Math.min(h.value, dispH - relY);
 
-      const originX = Math.floor((relX / scale));
-      const originY = Math.floor((relY / scale));
+      const originX = Math.floor(relX / scale);
+      const originY = Math.floor(relY / scale);
       const cropW = Math.max(1, Math.floor(relW / scale));
       const cropH = Math.max(1, Math.floor(relH / scale));
 
@@ -211,7 +208,7 @@ export function ImageEditorModal({ visible, uri, onClose, onSave }: Props) {
 
           <View style={styles.previewWrap} onLayout={onLayout}>
             <Image source={{ uri: workingUri }} style={styles.preview} resizeMode="contain" />
-            {mode === 'adjust' ? (
+            {mode === 'crop' ? (
               <GestureDetector gesture={pan}>
                 <Animated.View style={[styles.cropBox, cropStyle]}>
                   <View style={styles.gridH} />
@@ -230,16 +227,18 @@ export function ImageEditorModal({ visible, uri, onClose, onSave }: Props) {
             ) : null}
           </View>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tools}>
+          <View style={styles.tools}>
             <Pressable
-              style={[styles.tool, mode === 'adjust' && styles.toolActive]}
-              onPress={() => setMode('adjust')}
+              style={[styles.tool, mode === 'crop' && styles.toolActive]}
+              onPress={() => setMode('crop')}
             >
               <Text style={styles.toolText}>Crop</Text>
             </Pressable>
-            <Pressable style={styles.tool} onPress={applyCrop} disabled={busy}>
-              <Text style={styles.toolText}>Apply crop</Text>
-            </Pressable>
+            {mode === 'crop' ? (
+              <Pressable style={styles.toolPrimary} onPress={applyCrop} disabled={busy}>
+                <Text style={styles.toolPrimaryText}>Apply</Text>
+              </Pressable>
+            ) : null}
             <Pressable style={styles.tool} onPress={rotate} disabled={busy}>
               <Text style={styles.toolText}>Rotate</Text>
             </Pressable>
@@ -249,7 +248,7 @@ export function ImageEditorModal({ visible, uri, onClose, onSave }: Props) {
             >
               <Text style={styles.toolText}>Text</Text>
             </Pressable>
-          </ScrollView>
+          </View>
 
           {mode === 'text' ? (
             <>
@@ -261,7 +260,11 @@ export function ImageEditorModal({ visible, uri, onClose, onSave }: Props) {
                   value={text}
                   onChangeText={setText}
                 />
-                <Pressable style={styles.addTextBtn} onPress={applyText} disabled={busy || !text.trim()}>
+                <Pressable
+                  style={styles.addTextBtn}
+                  onPress={applyText}
+                  disabled={busy || !text.trim()}
+                >
                   <Text style={styles.addTextLabel}>Add</Text>
                 </Pressable>
               </View>
@@ -281,7 +284,7 @@ export function ImageEditorModal({ visible, uri, onClose, onSave }: Props) {
             </>
           ) : (
             <Text style={styles.hint}>
-              Drag the box to move. Drag the bottom-right corner to resize. Then tap Apply crop.
+              Drag the box to move. Drag the pink corner to resize, then tap Apply.
             </Text>
           )}
         </View>
@@ -371,24 +374,34 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   tools: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-    gap: spacing.sm,
   },
   tool: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderRadius: radii.pill,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
-    marginRight: spacing.sm,
   },
   toolActive: {
     borderColor: colors.primary,
     backgroundColor: 'rgba(255,61,138,0.12)',
   },
+  toolPrimary: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: radii.pill,
+    backgroundColor: colors.primary,
+  },
   toolText: { color: colors.text, fontWeight: '600', fontSize: 13 },
+  toolPrimaryText: { color: colors.white, fontWeight: '700', fontSize: 13 },
   textRow: {
     flexDirection: 'row',
     alignItems: 'center',
