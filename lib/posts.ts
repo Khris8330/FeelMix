@@ -128,7 +128,7 @@ async function engagementSets(postIds: string[]) {
 
   const [{ data: likes }, { data: reposts }, { data: reactions }] = await Promise.all([
     supabase.from('likes').select('post_id').eq('user_id', auth.user.id).in('post_id', postIds),
-    supabase.from('reposts').select('post_id').eq('user').eq('user_id', auth.user.id).in('post_id', postIds),
+    supabase.from('reposts').select('post_id').eq('user_id', auth.user.id).in('post_id', postIds),
     supabase.from('reactions').select('post_id, type').eq('user_id', auth.user.id).in('post_id', postIds),
   ]);
 
