@@ -184,7 +184,7 @@ export async function fetchFeedPosts(limit = 40): Promise<FeedPost[]> {
       .is('deleted_at', null)
       .order('created_at', { ascending: false })
       .limit(limit);
-    data = fallback.data;
+ data = fallback.data;
     error = fallback.error;
   }
 
@@ -298,13 +298,11 @@ export async function setReaction(postId: string, type: string | null) {
 
   const uid = auth.user.id;
 
-  // Clear previous
   await supabase.from('reactions').delete().eq('user_id', uid).eq('post_id', postId);
   await supabase.from('likes').delete().eq('user_id', uid).eq('post_id', postId);
 
   if (!type) return { error: null };
 
-  // Upsert reaction
   const { error: rErr } = await supabase.from('reactions').upsert(
     { user_id: uid, post_id: postId, type },
     { onConflict: 'user_id,post_id' }
@@ -314,7 +312,6 @@ export async function setReaction(postId: string, type: string | null) {
     return { error: rErr };
   }
 
-  // Any reaction also counts as a like for the counter trigger
   const { error: lErr } = await supabase.from('likes').insert({
     user_id: uid,
     post_id: postId,
@@ -393,13 +390,18 @@ export async function deletePost(postId: string) {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return { error: new Error('Not signed in') };
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('posts')
     .update({ deleted_at: new Date().toISOString() })
     .eq('id', postId)
-    .eq('author_id', auth.user.id);
+    .eq('author_id', auth.user.id)
+    .select('id');
 
-  return { error };
+  if (error) return { error };
+  if (!data || data.length === 0) {
+    return { error: new Error('Delete failed. You may not own this post.') };
+  }
+  return { error: null };
 }
 
 export async function updatePostBody(postId: string, body: string) {
