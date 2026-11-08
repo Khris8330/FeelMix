@@ -12,7 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { colors, spacing } from '@/constants/theme';
 import { AppIcon } from './AppIcon';
-import { fetchActiveStories, type StoryItem } from '@/lib/stories';
+import { fetchStoryRings, type StoryItem, type StoryRing } from '@/lib/stories';
 import { fetchMyProfile, initials, type Profile } from '@/lib/profile';
 
 function StoryThumb({ story }: { story: StoryItem }) {
@@ -54,17 +54,14 @@ function StoryThumb({ story }: { story: StoryItem }) {
 
 export function StoryRail() {
   const router = useRouter();
-  const [stories, setStories] = useState<StoryItem[]>([]);
+  const [rings, setRings] = useState<StoryRing[]>([]);
   const [me, setMe] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    const [profile, list] = await Promise.all([
-      fetchMyProfile(),
-      fetchActiveStories(),
-    ]);
+    const [profile, list] = await Promise.all([fetchMyProfile(), fetchStoryRings()]);
     setMe(profile);
-    setStories(list);
+    setRings(list);
     setLoading(false);
   }, []);
 
@@ -74,16 +71,18 @@ export function StoryRail() {
     }, [load])
   );
 
-  const ownStory = stories.find((s) => s.is_own) || null;
-  const others = stories.filter((s) => !s.is_own);
+  const own = rings.find((r) => r.is_own) || null;
+  const others = rings.filter((r) => !r.is_own);
 
   const openOwn = () => {
-    if (ownStory) {
-      router.push(`/story/${ownStory.id}`);
+    if (own) {
+      router.push(`/story/${own.open_id}`);
     } else {
       router.push('/add-story');
     }
   };
+
+  const previewStory = own ? own.stories[own.stories.length - 1] : null;
 
   return (
     <ScrollView
@@ -95,18 +94,14 @@ export function StoryRail() {
         <Pressable onPress={openOwn}>
           <View style={styles.ringWrap}>
             <LinearGradient
-              colors={
-                ownStory
-                  ? [colors.primary, colors.coral]
-                  : ['#3A3A4A', '#3A3A4A']
-              }
+              colors={own ? [colors.primary, colors.coral] : ['#3A3A4A', '#3A3A4A']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.ring}
             >
               <View style={styles.ringInner}>
-                {ownStory ? (
-                  <StoryThumb story={ownStory} />
+                {previewStory ? (
+                  <StoryThumb story={previewStory} />
                 ) : me?.avatar_url ? (
                   <Image source={{ uri: me.avatar_url }} style={styles.thumb} />
                 ) : (
@@ -118,6 +113,11 @@ export function StoryRail() {
                 )}
               </View>
             </LinearGradient>
+            {own && own.stories.length > 1 ? (
+              <View style={styles.countBadge}>
+                <Text style={styles.countText}>{own.stories.length}</Text>
+              </View>
+            ) : null}
             <Pressable
               style={styles.addBadge}
               onPress={(e) => {
@@ -140,17 +140,18 @@ export function StoryRail() {
           <ActivityIndicator color={colors.primary} size="small" />
         </View>
       ) : (
-        others.map((story) => {
-          const ringColors = story.seen
+        others.map((ring) => {
+          const ringColors = ring.all_seen
             ? (['#3A3A4A', '#3A3A4A'] as const)
             : ([colors.primary, colors.coral] as const);
-          const name = story.author.display_name || story.author.handle;
+          const name = ring.author.display_name || ring.author.handle;
+          const preview = ring.stories[ring.stories.length - 1];
 
           return (
             <Pressable
-              key={story.id}
+              key={ring.author_id}
               style={styles.item}
-              onPress={() => router.push(`/story/${story.id}`)}
+              onPress={() => router.push(`/story/${ring.open_id}`)}
             >
               <View style={styles.ringWrap}>
                 <LinearGradient
@@ -160,9 +161,14 @@ export function StoryRail() {
                   style={styles.ring}
                 >
                   <View style={styles.ringInner}>
-                    <StoryThumb story={story} />
+                    <StoryThumb story={preview} />
                   </View>
                 </LinearGradient>
+                {ring.stories.length > 1 ? (
+                  <View style={styles.countBadge}>
+                    <Text style={styles.countText}>{ring.stories.length}</Text>
+                  </View>
+                ) : null}
               </View>
               <Text style={styles.label} numberOfLines={1}>
                 {name.split(' ')[0]}
@@ -238,6 +244,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
   },
+  countBadge: {
+    position: 'absolute',
+    top: -2,
+    left: -2,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: colors.primary,
+    borderWidth: 2,
+    borderColor: colors.bg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+    zIndex: 2,
+  },
+  countText: { color: '#fff', fontSize: 10, fontWeight: '800' },
   addBadge: {
     position: 'absolute',
     right: 0,

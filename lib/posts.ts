@@ -371,18 +371,14 @@ export async function deletePost(postId: string) {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return { error: new Error('Not signed in') };
 
-  const { data, error } = await supabase
+  // Soft-delete without RETURNING first (RETURNING used to fail SELECT RLS when deleted_at was set)
+  const { error } = await supabase
     .from('posts')
     .update({ deleted_at: new Date().toISOString() })
     .eq('id', postId)
-    .eq('author_id', auth.user.id)
-    .select('id');
+    .eq('author_id', auth.user.id);
 
-  if (error) return { error };
-  if (!data || data.length === 0) {
-    return { error: new Error('Delete failed. You may not own this post.') };
-  }
-  return { error: null };
+  return { error };
 }
 
 export async function updatePostBody(postId: string, body: string) {
