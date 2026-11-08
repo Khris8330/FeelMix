@@ -127,21 +127,9 @@ async function engagementSets(postIds: string[]) {
   if (!auth.user) return { liked, reposted, myReactions };
 
   const [{ data: likes }, { data: reposts }, { data: reactions }] = await Promise.all([
-    supabase
-      .from('likes')
-      .select('post_id')
-      .eq('user_id', auth.user.id)
-      .in('post_id', postIds),
-    supabase
-      .from('reposts')
-      .select('post_id')
-      .eq('user_id', auth.user.id)
-      .in('post_id', postIds),
-    supabase
-      .from('reactions')
-      .select('post_id, type')
-      .eq('user_id', auth.user.id)
-      .in('post_id', postIds),
+    supabase.from('likes').select('post_id').eq('user_id', auth.user.id).in('post_id', postIds),
+    supabase.from('reposts').select('post_id').eq('user').eq('user_id', auth.user.id).in('post_id', postIds),
+    supabase.from('reactions').select('post_id, type').eq('user_id', auth.user.id).in('post_id', postIds),
   ]);
 
   (likes || []).forEach((r) => liked.add(r.post_id));
@@ -184,7 +172,7 @@ export async function fetchFeedPosts(limit = 40): Promise<FeedPost[]> {
       .is('deleted_at', null)
       .order('created_at', { ascending: false })
       .limit(limit);
- data = fallback.data;
+    data = fallback.data;
     error = fallback.error;
   }
 
@@ -346,10 +334,7 @@ export async function fetchComments(postId: string): Promise<CommentItem[]> {
   const { data, error } = await supabase
     .from('comments')
     .select(
-      `
-      id, body, created_at,
-      profiles!comments_author_id_fkey ( id, handle, display_name, avatar_url )
-    `
+      `id, body, created_at, profiles!comments_author_id_fkey ( id, handle, display_name, avatar_url )`
     )
     .eq('post_id', postId)
     .is('deleted_at', null)
@@ -375,11 +360,7 @@ export async function addComment(postId: string, body: string) {
 
   const { data, error } = await supabase
     .from('comments')
-    .insert({
-      post_id: postId,
-      author_id: auth.user.id,
-      body: body.trim(),
-    })
+    .insert({ post_id: postId, author_id: auth.user.id, body: body.trim() })
     .select('id')
     .single();
 
