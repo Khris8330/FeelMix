@@ -16,6 +16,18 @@ export type AppNotification = {
   } | null;
 };
 
+const REACTION_LABEL: Record<string, string> = {
+  love: 'loved',
+  like: 'liked',
+  heart: 'loved',
+  haha: 'laughed at',
+  laugh: 'laughed at',
+  wow: 'was amazed by',
+  sad: 'felt sad about',
+  angry: 'reacted angrily to',
+  fire: 'lit up',
+};
+
 export async function fetchNotifications(limit = 40): Promise<AppNotification[]> {
   const { data, error } = await supabase
     .from('notifications')
@@ -84,10 +96,15 @@ export function notificationCopy(n: AppNotification): string {
   switch (n.type) {
     case 'like':
       return `${who} liked your post`;
-    case 'reaction':
-      return `${who} reacted to your post`;
-    case 'comment':
-      return `${who} commented on your post`;
+    case 'reaction': {
+      const r = String(n.meta?.reaction || 'love');
+      const verb = REACTION_LABEL[r] || 'reacted to';
+      return `${who} ${verb} your post`;
+    }
+    case 'comment': {
+      const preview = n.meta?.preview ? `: "${n.meta.preview}"` : '';
+      return `${who} commented on your post${preview}`;
+    }
     case 'follow':
       return `${who} started following you`;
     case 'repost':
