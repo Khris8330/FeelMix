@@ -115,11 +115,10 @@ export default function HomeScreen() {
                   )}
                 </Pressable>
                 <Pressable
-                  style={styles.searchWrap}
+                  style={styles.composerWrap}
                   onPress={() => router.push('/(tabs)/create')}
                 >
-                  <AppIcon name="search" size={16} color={colors.textMuted} />
-                  <Text style={styles.searchPlaceholder}>What is on your mind?</Text>
+                  <Text style={styles.composerPlaceholder}>What is on your mind?</Text>
                 </Pressable>
               </View>
             </View>
@@ -218,19 +217,17 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
   },
-  searchWrap: {
+  composerWrap: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
     paddingHorizontal: spacing.lg,
     paddingVertical: 12,
     borderRadius: radii.pill,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
+    justifyContent: 'center',
   },
-  searchPlaceholder: {
+  composerPlaceholder: {
     color: colors.textMuted,
     fontSize: 14,
   },
