@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,9 @@ import {
   ScrollView,
   ActivityIndicator,
   RefreshControl,
+  useWindowDimensions,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -16,25 +19,90 @@ import { AppIcon } from '@/components/AppIcon';
 import { PostCard } from '@/components/PostCard';
 import { fetchMyProfile, initials, type Profile } from '@/lib/profile';
 import { fetchPostsByAuthor, type FeedPost } from '@/lib/posts';
+import {
+  fetchFollowers,
+  fetchFollowing,
+  followUser,
+  unfollowUser,
+  type Person,
+} from '@/lib/follows';
 
-type Tab = 'posts' | 'vibes' | 'about';
+type Tab = 'posts' | 'vibes' | 'about' | 'people';
+
+function PersonRow({
+  person,
+  onToggle,
+  busy,
+}: {
+  person: Person;
+  onToggle: () => void;
+  busy?: boolean;
+}) {
+  const router = useRouter();
+  const name = person.display_name || person.handle;
+
+  return (
+    <View style={styles.personRow}>
+      <Pressable style={styles.person} onPress={() => router.push(`/user/${person.id}`)}>
+        {person.avatar_url ? (
+          <Image source={{ uri: person.avatar_url }} style={styles.personAvatar} />
+        ) : (
+          <View style={[styles.personAvatar, styles.avatarFallback]}>
+            <Text style={styles.personInitials}>{initials(name)}</Text>
+          </View>
+        )}
+        <View style={{ flex: 1 }}>
+          <Text style={styles.personName}>{name}</Text>
+          <Text style={styles.personHandle}>@{person.handle}</Text>
+        </View>
+      </Pressable>
+      <Pressable
+        style={[styles.followBtn, person.is_following && styles.followingBtn]}
+        onPress={onToggle}
+        disabled={busy}
+      >
+        {busy ? (
+          <ActivityIndicator size="small" color={colors.text} />
+        ) : (
+          <Text style={styles.followText}>
+            {person.is_following ? 'Following' : 'Follow'}
+          </Text>
+        )}
+      </Pressable>
+    </View>
+  );
+}
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const pagerRef = useRef<ScrollView>(null);
   const [tab, setTab] = useState<Tab>('posts');
+  const [peoplePage, setPeoplePage] = useState(0); // 0 following, 1 followers
   const [profile, setProfile] = useState<Profile | null>(null);
   const [posts, setPosts] = useState<FeedPost[]>([]);
+  const [following, setFollowing] = useState<Person[]>([]);
+  const [followers, setFollowers] = useState<Person[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const p = await fetchMyProfile();
     setProfile(p);
     if (p) {
-      const list = await fetchPostsByAuthor(p.id);
+      const [list, fwing, fwers] = await Promise.all([
+        fetchPostsByAuthor(p.id),
+        fetchFollowing(),
+        fetchFollowers(),
+      ]);
       setPosts(list);
+      setFollowing(fwing);
+      setFollowers(fwers);
     } else {
       setPosts([]);
+      setFollowing([]);
+      setFollowers([]);
     }
     setLoading(false);
     setRefreshing(false);
@@ -45,6 +113,40 @@ export default function ProfileScreen() {
       load();
     }, [load])
   );
+
+  const openPeople = (page: 0 | 1) => {
+    setTab('people');
+    setPeoplePage(page);
+    requestAnimationFrame(() => {
+      pagerRef.current?.scrollTo({ x: page * width, animated: false });
+    });
+  };
+
+  const onPeopleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const page = Math.round(e.nativeEvent.contentOffset.x / Math.max(width, 1));
+    setPeoplePage(page);
+  };
+
+  const toggleFollow = async (person: Person, list: 'following' | 'followers') => {
+    setBusyId(person.id);
+    if (person.is_following) {
+      await unfollowUser(person.id);
+      setFollowing((items) => items.filter((p) => p.id !== person.id));
+      setFollowers((items) =>
+        items.map((p) => (p.id === person.id ? { ...p, is_following: false } : p))
+      );
+    } else {
+      await followUser(person.id);
+      const updated = { ...person, is_following: true };
+      setFollowers((items) =>
+        items.map((p) => (p.id === person.id ? updated : p))
+      );
+      setFollowing((items) =>
+        items.some((p) => p.id === person.id) ? items : [...items, updated]
+      );
+    }
+    setBusyId(null);
+  };
 
   if (loading) {
     return (
@@ -103,18 +205,18 @@ export default function ProfileScreen() {
           {profile.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
 
           <View style={styles.stats}>
-            <View style={styles.stat}>
+            <Pressable style={styles.stat} onPress={() => setTab('posts')}>
               <Text style={styles.statNum}>{profile.posts_count}</Text>
               <Text style={styles.statLabel}>Posts</Text>
-            </View>
-            <View style={styles.stat}>
+            </Pressable>
+            <Pressable style={styles.stat} onPress={() => openPeople(1)}>
               <Text style={styles.statNum}>{profile.followers_count}</Text>
               <Text style={styles.statLabel}>Followers</Text>
-            </View>
-            <View style={styles.stat}>
+            </Pressable>
+            <Pressable style={styles.stat} onPress={() => openPeople(0)}>
               <Text style={styles.statNum}>{profile.following_count}</Text>
               <Text style={styles.statLabel}>Following</Text>
-            </View>
+            </Pressable>
           </View>
 
           <Pressable
@@ -126,12 +228,26 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.tabs}>
-          {(['posts', 'vibes', 'about'] as Tab[]).map((t) => (
-            <Pressable key={t} style={styles.tab} onPress={() => setTab(t)}>
-              <Text style={[styles.tabText, tab === t && styles.tabActive]}>
-                {t.charAt(0).toUpperCase() + t.slice(1)}
+          {(
+            [
+              ['posts', 'Posts'],
+              ['people', 'People'],
+              ['vibes', 'Vibes'],
+              ['about', 'About'],
+            ] as const
+          ).map(([key, label]) => (
+            <Pressable
+              key={key}
+              style={styles.tab}
+              onPress={() => {
+                if (key === 'people') openPeople(peoplePage as 0 | 1);
+                else setTab(key);
+              }}
+            >
+              <Text style={[styles.tabText, tab === key && styles.tabActive]}>
+                {label}
               </Text>
-              {tab === t ? <View style={styles.tabLine} /> : null}
+              {tab === key ? <View style={styles.tabLine} /> : null}
             </Pressable>
           ))}
         </View>
@@ -149,6 +265,80 @@ export default function ProfileScreen() {
                 Your posts will show up here. Share something from Create.
               </Text>
             ))}
+
+          {tab === 'people' && (
+            <View>
+              <View style={styles.peopleTabs}>
+                <Pressable
+                  style={styles.peopleTab}
+                  onPress={() => openPeople(0)}
+                >
+                  <Text
+                    style={[
+                      styles.peopleTabText,
+                      peoplePage === 0 && styles.peopleTabActive,
+                    ]}
+                  >
+                    Following
+                  </Text>
+                  {peoplePage === 0 ? <View style={styles.peopleLine} /> : null}
+                </Pressable>
+                <Pressable
+                  style={styles.peopleTab}
+                  onPress={() => openPeople(1)}
+                >
+                  <Text
+                    style={[
+                      styles.peopleTabText,
+                      peoplePage === 1 && styles.peopleTabActive,
+                    ]}
+                  >
+                    Followers
+                  </Text>
+                  {peoplePage === 1 ? <View style={styles.peopleLine} /> : null}
+                </Pressable>
+              </View>
+
+              <ScrollView
+                ref={pagerRef}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onMomentumScrollEnd={onPeopleScroll}
+                style={{ width }}
+              >
+                <View style={{ width, paddingHorizontal: spacing.lg }}>
+                  {following.length ? (
+                    following.map((p) => (
+                      <PersonRow
+                        key={p.id}
+                        person={p}
+                        busy={busyId === p.id}
+                        onToggle={() => toggleFollow(p, 'following')}
+                      />
+                    ))
+                  ) : (
+                    <Text style={styles.empty}>You are not following anyone yet.</Text>
+                  )}
+                </View>
+                <View style={{ width, paddingHorizontal: spacing.lg }}>
+                  {followers.length ? (
+                    followers.map((p) => (
+                      <PersonRow
+                        key={p.id}
+                        person={p}
+                        busy={busyId === p.id}
+                        onToggle={() => toggleFollow(p, 'followers')}
+                      />
+                    ))
+                  ) : (
+                    <Text style={styles.empty}>No followers yet.</Text>
+                  )}
+                </View>
+              </ScrollView>
+            </View>
+          )}
+
           {tab === 'vibes' &&
             (vibePosts.length ? (
               vibePosts.map((p) => (
@@ -161,6 +351,7 @@ export default function ProfileScreen() {
                 Shared vibes will appear here after you post a mood mix.
               </Text>
             ))}
+
           {tab === 'about' && (
             <View style={styles.about}>
               <Text style={styles.aboutLabel}>Bio</Text>
@@ -253,7 +444,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: spacing.md,
   },
-  tabText: { color: colors.textMuted, fontWeight: '600', fontSize: 14 },
+  tabText: { color: colors.textMuted, fontWeight: '600', fontSize: 13 },
   tabActive: { color: colors.primary },
   tabLine: {
     position: 'absolute',
@@ -264,18 +455,19 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   tabBody: {
-    padding: spacing.lg,
+    paddingTop: spacing.lg,
     paddingBottom: spacing.xxxl,
   },
-  postWrap: { marginBottom: spacing.md },
+  postWrap: { marginBottom: spacing.md, paddingHorizontal: spacing.lg },
   empty: {
     color: colors.textMuted,
     fontSize: 14,
     textAlign: 'center',
     marginTop: spacing.xxl,
     lineHeight: 20,
+    paddingHorizontal: spacing.lg,
   },
-  about: { gap: spacing.sm },
+  about: { gap: spacing.sm, paddingHorizontal: spacing.lg },
   aboutLabel: {
     color: colors.textMuted,
     fontSize: 12,
@@ -284,4 +476,59 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   aboutValue: { color: colors.text, fontSize: 15 },
+  peopleTabs: {
+    flexDirection: 'row',
+    marginBottom: spacing.md,
+    paddingHorizontal: spacing.lg,
+  },
+  peopleTab: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+  },
+  peopleTabText: { color: colors.textMuted, fontWeight: '700', fontSize: 14 },
+  peopleTabActive: { color: colors.primary },
+  peopleLine: {
+    marginTop: 6,
+    height: 2,
+    width: 40,
+    backgroundColor: colors.primary,
+    borderRadius: 2,
+  },
+  personRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  person: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  personAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.surfaceElevated,
+  },
+  personInitials: { color: colors.text, fontSize: 13, fontWeight: '800' },
+  personName: { color: colors.text, fontWeight: '700', fontSize: 15 },
+  personHandle: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
+  followBtn: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: radii.pill,
+    backgroundColor: colors.primary,
+    minWidth: 96,
+    alignItems: 'center',
+  },
+  followingBtn: {
+    backgroundColor: colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  followText: { color: colors.text, fontWeight: '600', fontSize: 13 },
 });

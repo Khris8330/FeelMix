@@ -108,12 +108,12 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="friends"
+        name="messages"
         options={{
-          title: 'Friends',
+          title: 'Messages',
           tabBarIcon: ({ color, focused }) => (
             <AppIcon
-              name={focused ? 'people' : 'people-outline'}
+              name={focused ? 'chatbubble' : 'chatbubble-outline'}
               size={22}
               color={color}
             />
@@ -131,6 +131,12 @@ export default function TabsLayout() {
               color={color}
             />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="friends"
+        options={{
+          href: null,
         }}
       />
     </Tabs>
