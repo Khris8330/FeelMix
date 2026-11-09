@@ -138,7 +138,7 @@ export default function MessagesTabScreen() {
           ListEmptyComponent={
             requests.length ? null : (
               <Text style={styles.empty}>
-                No conversations yet. Open someone&apos;s profile and tap Message to request a chat.
+                No conversations yet. Open someones profile and tap Message to request a chat.
               </Text>
             )
           }
@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
   },
   fallback: { alignItems: 'center', justifyContent: 'center' },
   initials: { color: colors.text, fontWeight: '800', fontSize: 14 },
-  name: { color: colors.text, fontWeight: '700', fontSize: 15 },
+  name: { color: colors.text, fontWeight: '800', fontSize: 15 },
   sub: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
   reqActions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
   acceptBtn: {
