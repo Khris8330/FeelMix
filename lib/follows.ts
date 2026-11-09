@@ -134,7 +134,7 @@ export async function unfollowUser(userId: string) {
     .from('follows')
     .delete()
     .eq('follower_id', auth.user.id)
-    .eqeq('following_id', userId);
+    .eq('following_id', userId);
   return { error };
 }
 
