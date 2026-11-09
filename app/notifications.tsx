@@ -45,6 +45,10 @@ export default function NotificationsScreen() {
 
   const open = async (n: AppNotification) => {
     await markNotificationRead(n.id);
+    if (n.type === 'dm_request') {
+      router.push('/messages');
+      return;
+    }
     if (n.type === 'follow' && n.actor?.id) {
       router.push(`/user/${n.actor.id}`);
       return;

@@ -18,6 +18,7 @@ import { PostCard } from '@/components/PostCard';
 import { fetchProfileById, initials, type PublicProfile } from '@/lib/profile';
 import { fetchPostsByAuthor, type FeedPost } from '@/lib/posts';
 import { followUser, unfollowUser } from '@/lib/follows';
+import { getDmStatus, requestDm } from '@/lib/messages';
 
 export default function UserProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -27,8 +28,15 @@ export default function UserProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [dmBusy, setDmBusy] = useState(false);
   const [following, setFollowing] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
+  const [dmLabel, setDmLabel] = useState('Message');
+  const [dmStatus, setDmStatus] = useState<
+    'none' | 'pending_out' | 'pending_in' | 'accepted' | 'declined'
+  >('none');
+  const [conversationId, setConversationId] = useState<string | undefined>();
+  const [requestId, setRequestId] = useState<string | undefined>();
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -39,6 +47,17 @@ export default function UserProfileScreen() {
       setFollowersCount(p.followers_count);
       const list = await fetchPostsByAuthor(p.id);
       setPosts(list);
+      if (!p.is_own) {
+        const st = await getDmStatus(p.id);
+        setDmStatus(st.status);
+        setConversationId(st.conversationId);
+        setRequestId(st.requestId);
+        if (st.status === 'accepted') setDmLabel('Message');
+        else if (st.status === 'pending_out') setDmLabel('Requested');
+        else if (st.status === 'pending_in') setDmLabel('Respond');
+        else if (st.status === 'declined') setDmLabel('Message');
+        else setDmLabel('Message');
+      }
     } else {
       setPosts([]);
     }
@@ -74,6 +93,47 @@ export default function UserProfileScreen() {
       setFollowing(true);
       setFollowersCount((c) => c + 1);
     }
+  };
+
+  const onMessage = async () => {
+    if (!profile || profile.is_own) return;
+
+    if (dmStatus === 'accepted' && conversationId) {
+      router.push(`/messages/${conversationId}`);
+      return;
+    }
+
+    if (dmStatus === 'pending_in') {
+      router.push('/messages');
+      return;
+    }
+
+    if (dmStatus === 'pending_out') {
+      Alert.alert('Request pending', 'They still need to accept your message request.');
+      return;
+    }
+
+    if (!following) {
+      Alert.alert(
+        'Follow first',
+        'Follow this person, then request a direct message. They must accept before you can chat.'
+      );
+      return;
+    }
+
+    setDmBusy(true);
+    const { error } = await requestDm(profile.id);
+    setDmBusy(false);
+    if (error) {
+      Alert.alert('Could not send request', error.message);
+      return;
+    }
+    setDmStatus('pending_out');
+    setDmLabel('Requested');
+    Alert.alert(
+      'Request sent',
+      'They will need to accept before you can send direct messages.'
+    );
   };
 
   if (loading) {
@@ -167,18 +227,12 @@ export default function UserProfileScreen() {
                 </Text>
               )}
             </Pressable>
-            <Pressable
-              style={styles.btnOutline}
-              onPress={() =>
-                Alert.alert(
-                  'Direct messages',
-                  following
-                    ? 'DM requests will be available in the next update. For now you can reply on posts.'
-                    : 'Follow this person first, then you can request a direct message.'
-                )
-              }
-            >
-              <Text style={styles.btnTextOutline}>Message</Text>
+            <Pressable style={styles.btnOutline} onPress={onMessage} disabled={dmBusy}>
+              {dmBusy ? (
+                <ActivityIndicator color={colors.text} />
+              ) : (
+                <Text style={styles.btnTextOutline}>{dmLabel}</Text>
+              )}
             </Pressable>
           </View>
         ) : (

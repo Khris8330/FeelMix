@@ -10,6 +10,7 @@ type Props = {
 };
 
 const ITEMS = [
+  { id: 'messages', label: 'Messages', icon: 'chatbubble-outline', href: '/messages' },
   { id: 'search', label: 'Search', icon: 'search', href: '/search' },
   { id: 'settings', label: 'Settings', icon: 'settings-outline', href: null },
   { id: 'saved', label: 'Saved', icon: 'bookmark-outline', href: null },

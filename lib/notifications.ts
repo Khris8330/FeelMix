@@ -109,6 +109,8 @@ export function notificationCopy(n: AppNotification): string {
       return `${who} started following you`;
     case 'repost':
       return `${who} reposted your post`;
+    case 'dm_request':
+      return `${who} requested to message you`;
     default:
       return `${who} interacted with you`;
   }
