@@ -57,6 +57,9 @@ export default function HomeScreen() {
           Kri<Text style={styles.logoAccent}>mie</Text>
         </Text>
         <View style={styles.headerActions}>
+          <Pressable hitSlop={10} onPress={() => router.push('/search')} style={styles.iconBtn}>
+            <AppIcon name="search" size={22} color={colors.text} />
+          </Pressable>
           <Pressable hitSlop={10} onPress={() => router.push('/mood')} style={styles.iconBtn}>
             <AppIcon name="musical-notes" size={22} color={colors.text} />
           </Pressable>

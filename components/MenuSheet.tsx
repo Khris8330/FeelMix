@@ -10,9 +10,10 @@ type Props = {
 };
 
 const ITEMS = [
-  { id: 'settings', label: 'Settings', icon: 'settings-outline' },
-  { id: 'saved', label: 'Saved', icon: 'bookmark-outline' },
-  { id: 'help', label: 'Help and support', icon: 'help-outline' },
+  { id: 'search', label: 'Search', icon: 'search', href: '/search' },
+  { id: 'settings', label: 'Settings', icon: 'settings-outline', href: null },
+  { id: 'saved', label: 'Saved', icon: 'bookmark-outline', href: null },
+  { id: 'help', label: 'Help and support', icon: 'help-outline', href: null },
 ] as const;
 
 export function MenuSheet({ visible, onClose }: Props) {
@@ -31,6 +32,7 @@ export function MenuSheet({ visible, onClose }: Props) {
                 style={styles.row}
                 onPress={() => {
                   onClose();
+                  if (item.href) router.push(item.href as any);
                 }}
               >
                 <View style={styles.iconWrap}>
