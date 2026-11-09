@@ -46,6 +46,45 @@ export async function fetchFollowing(): Promise<Person[]> {
     .filter(Boolean) as Person[];
 }
 
+export async function fetchFollowers(): Promise<Person[]> {
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return [];
+
+  const { data, error } = await supabase
+    .from('follows')
+    .select(
+      `
+      follower_id,
+      profiles!follows_follower_id_fkey (
+        id, handle, display_name, avatar_url, bio
+      )
+    `
+    )
+    .eq('following_id', auth.user.id);
+
+  if (error || !data) {
+    console.warn('fetchFollowers', error?.message);
+    return [];
+  }
+
+  const followingIds = new Set(await getFollowingIds());
+
+  return data
+    .map((row: any) => {
+      const p = row.profiles;
+      if (!p) return null;
+      return {
+        id: p.id,
+        handle: p.handle,
+        display_name: p.display_name,
+        avatar_url: p.avatar_url,
+        bio: p.bio,
+        is_following: followingIds.has(p.id),
+      } as Person;
+    })
+    .filter(Boolean) as Person[];
+}
+
 export async function fetchSuggested(limit = 20): Promise<Person[]> {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return [];
@@ -78,6 +117,7 @@ export async function fetchSuggested(limit = 20): Promise<Person[]> {
 export async function followUser(userId: string) {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return { error: new Error('Not signed in') };
+  if (auth.user.id === userId) return { error: new Error('Cannot follow yourself') };
 
   const { error } = await supabase.from('follows').insert({
     follower_id: auth.user.id,
@@ -94,7 +134,7 @@ export async function unfollowUser(userId: string) {
     .from('follows')
     .delete()
     .eq('follower_id', auth.user.id)
-    .eq('following_id', userId);
+    .eqeq('following_id', userId);
   return { error };
 }
 
@@ -108,4 +148,18 @@ export async function getFollowingIds(): Promise<string[]> {
     .eq('follower_id', auth.user.id);
 
   return (data || []).map((r) => r.following_id);
+}
+
+export async function isFollowing(userId: string): Promise<boolean> {
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return false;
+
+  const { data } = await supabase
+    .from('follows')
+    .select('following_id')
+    .eq('follower_id', auth.user.id)
+    .eq('following_id', userId)
+    .maybeSingle();
+
+  return !!data;
 }

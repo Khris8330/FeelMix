@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { isFollowing } from './follows';
 
 export type Profile = {
   id: string;
@@ -12,6 +13,11 @@ export type Profile = {
   followers_count: number;
   following_count: number;
   vibes_count: number;
+};
+
+export type PublicProfile = Profile & {
+  is_following: boolean;
+  is_own: boolean;
 };
 
 export async function fetchMyProfile(): Promise<Profile | null> {
@@ -28,6 +34,29 @@ export async function fetchMyProfile(): Promise<Profile | null> {
 
   if (error || !data) return null;
   return data as Profile;
+}
+
+export async function fetchProfileById(userId: string): Promise<PublicProfile | null> {
+  const { data: auth } = await supabase.auth.getUser();
+  const myId = auth.user?.id || null;
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select(
+      'id, handle, display_name, avatar_url, bio, status_emoji, is_verified, posts_count, followers_count, following_count, vibes_count'
+    )
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (error || !data) return null;
+
+  const following = myId && myId !== userId ? await isFollowing(userId) : false;
+
+  return {
+    ...(data as Profile),
+    is_following: following,
+    is_own: myId === userId,
+  };
 }
 
 export async function updateMyProfile(patch: {

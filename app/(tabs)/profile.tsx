@@ -109,11 +109,11 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.stat}>
               <Text style={styles.statNum}>{profile.followers_count}</Text>
-              <Text style={styles.statLabel}>Friends</Text>
+              <Text style={styles.statLabel}>Followers</Text>
             </View>
             <View style={styles.stat}>
-              <Text style={styles.statNum}>{profile.vibes_count}</Text>
-              <Text style={styles.statLabel}>Vibes</Text>
+              <Text style={styles.statNum}>{profile.following_count}</Text>
+              <Text style={styles.statLabel}>Following</Text>
             </View>
           </View>
 

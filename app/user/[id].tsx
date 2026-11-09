@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -6,96 +6,197 @@ import {
   Image,
   Pressable,
   ScrollView,
+  ActivityIndicator,
+  RefreshControl,
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { colors, radii, spacing } from '@/constants/theme';
-import { getUser, getPostsByUser } from '@/data/mock';
+import { AppIcon } from '@/components/AppIcon';
 import { PostCard } from '@/components/PostCard';
+import { fetchProfileById, initials, type PublicProfile } from '@/lib/profile';
+import { fetchPostsByAuthor, type FeedPost } from '@/lib/posts';
+import { followUser, unfollowUser } from '@/lib/follows';
 
 export default function UserProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const user = getUser(id);
-  const [following, setFollowing] = useState(user?.isFollowing ?? false);
-  const [dmRequested, setDmRequested] = useState(false);
-  const posts = user ? getPostsByUser(user.id) : [];
+  const [profile, setProfile] = useState<PublicProfile | null>(null);
+  const [posts, setPosts] = useState<FeedPost[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [following, setFollowing] = useState(false);
+  const [followersCount, setFollowersCount] = useState(0);
 
-  if (!user) {
+  const load = useCallback(async () => {
+    if (!id) return;
+    const p = await fetchProfileById(id);
+    setProfile(p);
+    if (p) {
+      setFollowing(p.is_following);
+      setFollowersCount(p.followers_count);
+      const list = await fetchPostsByAuthor(p.id);
+      setPosts(list);
+    } else {
+      setPosts([]);
+    }
+    setLoading(false);
+    setRefreshing(false);
+  }, [id]);
+
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
+
+  const toggleFollow = async () => {
+    if (!profile || profile.is_own) return;
+    setBusy(true);
+    if (following) {
+      const { error } = await unfollowUser(profile.id);
+      setBusy(false);
+      if (error) {
+        Alert.alert('Could not unfollow', error.message);
+        return;
+      }
+      setFollowing(false);
+      setFollowersCount((c) => Math.max(0, c - 1));
+    } else {
+      const { error } = await followUser(profile.id);
+      setBusy(false);
+      if (error) {
+        Alert.alert('Could not follow', error.message);
+        return;
+      }
+      setFollowing(true);
+      setFollowersCount((c) => c + 1);
+    }
+  };
+
+  if (loading) {
     return (
       <SafeAreaView style={styles.safe}>
+        <View style={styles.boot}>
+          <ActivityIndicator color={colors.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.topBar}>
+          <Pressable onPress={() => router.back()} hitSlop={12}>
+            <AppIcon name="close" size={22} color={colors.text} />
+          </Pressable>
+          <Text style={styles.topTitle}>Profile</Text>
+          <View style={{ width: 22 }} />
+        </View>
         <Text style={styles.empty}>User not found.</Text>
       </SafeAreaView>
     );
   }
 
-  const requestDm = () => {
-    if (!following) {
-      Alert.alert(
-        'Follow first',
-        'Follow this person, then request a direct message. They must accept before you can chat.'
-      );
-      return;
-    }
-    setDmRequested(true);
-    Alert.alert(
-      'Request sent',
-      'They will need to accept before you can send direct messages. Until then you can reply on their posts.'
-    );
-  };
+  const name = profile.display_name || profile.handle;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.topBar}>
         <Pressable onPress={() => router.back()} hitSlop={12}>
-          <Ionicons name="arrow-back" size={22} color={colors.text} />
+          <AppIcon name="close" size={22} color={colors.text} />
         </Pressable>
-        <Text style={styles.topTitle}>{user.name}</Text>
+        <Text style={styles.topTitle}>{name}</Text>
         <View style={{ width: 22 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
-        <Image source={{ uri: user.avatar }} style={styles.avatar} />
-        <Text style={styles.name}>{user.name}</Text>
-        <Text style={styles.handle}>@{user.handle}</Text>
-        <Text style={styles.bio}>{user.bio}</Text>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => {
+              setRefreshing(true);
+              load();
+            }}
+            tintColor={colors.primary}
+          />
+        }
+      >
+        {profile.avatar_url ? (
+          <Image source={{ uri: profile.avatar_url }} style={styles.avatar} />
+        ) : (
+          <View style={[styles.avatar, styles.avatarFallback]}>
+            <Text style={styles.avatarInitials}>{initials(name)}</Text>
+          </View>
+        )}
+        <Text style={styles.name}>{name}</Text>
+        <Text style={styles.handle}>@{profile.handle}</Text>
+        {profile.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
 
         <View style={styles.stats}>
           <View style={styles.stat}>
-            <Text style={styles.statNum}>{user.postsCount}</Text>
+            <Text style={styles.statNum}>{profile.posts_count}</Text>
             <Text style={styles.statLabel}>Posts</Text>
           </View>
           <View style={styles.stat}>
-            <Text style={styles.statNum}>{user.followersCount}</Text>
-            <Text style={styles.statLabel}>Friends</Text>
+            <Text style={styles.statNum}>{followersCount}</Text>
+            <Text style={styles.statLabel}>Followers</Text>
           </View>
           <View style={styles.stat}>
-            <Text style={styles.statNum}>{user.vibesCount}</Text>
-            <Text style={styles.statLabel}>Vibes</Text>
+            <Text style={styles.statNum}>{profile.following_count}</Text>
+            <Text style={styles.statLabel}>Following</Text>
           </View>
         </View>
 
-        <View style={styles.actions}>
+        {!profile.is_own ? (
+          <View style={styles.actions}>
+            <Pressable
+              style={[styles.btn, following && styles.btnOutline]}
+              onPress={toggleFollow}
+              disabled={busy}
+            >
+              {busy ? (
+                <ActivityIndicator color={following ? colors.text : colors.white} />
+              ) : (
+                <Text style={[styles.btnText, following && styles.btnTextOutline]}>
+                  {following ? 'Following' : 'Follow'}
+                </Text>
+              )}
+            </Pressable>
+            <Pressable
+              style={styles.btnOutline}
+              onPress={() =>
+                Alert.alert(
+                  'Direct messages',
+                  following
+                    ? 'DM requests will be available in the next update. For now you can reply on posts.'
+                    : 'Follow this person first, then you can request a direct message.'
+                )
+              }
+            >
+              <Text style={styles.btnTextOutline}>Message</Text>
+            </Pressable>
+          </View>
+        ) : (
           <Pressable
-            style={[styles.btn, following && styles.btnOutline]}
-            onPress={() => setFollowing((v) => !v)}
+            style={[styles.btnOutline, { marginTop: spacing.xl }]}
+            onPress={() => router.push('/edit-profile')}
           >
-            <Text style={[styles.btnText, following && styles.btnTextOutline]}>
-              {following ? 'Following' : 'Follow'}
-            </Text>
+            <Text style={styles.btnTextOutline}>Edit profile</Text>
           </Pressable>
-          <Pressable style={styles.btnOutline} onPress={requestDm}>
-            <Text style={styles.btnTextOutline}>
-              {dmRequested ? 'DM requested' : 'Message'}
-            </Text>
-          </Pressable>
-        </View>
+        )}
 
         <Text style={styles.section}>Posts</Text>
         {posts.length ? (
-          posts.map((p) => <PostCard key={p.id} post={p} />)
+          posts.map((p) => (
+            <View key={p.id} style={styles.postWrap}>
+              <PostCard post={p} />
+            </View>
+          ))
         ) : (
           <Text style={styles.empty}>No posts yet from this person.</Text>
         )}
@@ -106,6 +207,7 @@ export default function UserProfileScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
+  boot: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -126,7 +228,10 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.primary,
     marginBottom: spacing.md,
+    backgroundColor: colors.surface,
   },
+  avatarFallback: { alignItems: 'center', justifyContent: 'center' },
+  avatarInitials: { color: colors.text, fontSize: 28, fontWeight: '800' },
   name: { color: colors.text, fontSize: 22, fontWeight: '800' },
   handle: { color: colors.textMuted, fontSize: 14, marginTop: 4 },
   bio: {
@@ -148,13 +253,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.md,
     marginTop: spacing.xl,
-    marginBottom: spacing.xxl,
+    marginBottom: spacing.lg,
   },
   btn: {
     backgroundColor: colors.primary,
     paddingHorizontal: spacing.xxl,
     paddingVertical: spacing.md,
     borderRadius: radii.pill,
+    minWidth: 120,
+    alignItems: 'center',
   },
   btnOutline: {
     paddingHorizontal: spacing.xxl,
@@ -163,6 +270,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
+    minWidth: 120,
+    alignItems: 'center',
   },
   btnText: { color: colors.white, fontWeight: '700' },
   btnTextOutline: { color: colors.text, fontWeight: '700' },
@@ -171,8 +280,10 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontWeight: '700',
     fontSize: 16,
+    marginTop: spacing.xl,
     marginBottom: spacing.md,
   },
+  postWrap: { width: '100%', marginBottom: spacing.md },
   empty: {
     color: colors.textMuted,
     textAlign: 'center',
