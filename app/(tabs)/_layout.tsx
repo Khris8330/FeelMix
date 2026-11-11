@@ -39,13 +39,12 @@ export default function TabsLayout() {
     };
   }, [router]);
 
-  // Chrome Android often reports insets.bottom = 0 while the browser chrome still eats space.
+  // Mobile Chrome often reports 0 inset but still covers the bottom of the page.
+  // Keep generous padding so labels (Home, Discover, etc.) are fully visible.
   const bottomPad = Math.max(
     insets.bottom,
-    isMobileWeb ? 30 : Platform.OS === 'web' ? 18 : 12
+    isMobileWeb ? 42 : Platform.OS === 'web' ? 20 : 14
   );
-  const contentHeight = isMobileWeb ? 56 : 52;
-  const barHeight = contentHeight + bottomPad + 10;
 
   if (!allowed) {
     return (
@@ -63,8 +62,10 @@ export default function TabsLayout() {
           backgroundColor: colors.bg,
           borderTopColor: colors.border,
           borderTopWidth: 1,
-          height: barHeight,
-          paddingTop: 8,
+          // Let padding define space; avoid fixed height clipping labels on web.
+          height: undefined as unknown as number,
+          minHeight: 56 + bottomPad,
+          paddingTop: 6,
           paddingBottom: bottomPad,
           overflow: 'visible',
         },
@@ -156,15 +157,19 @@ const styles = StyleSheet.create({
   tabLabel: {
     fontSize: 11,
     fontWeight: '600',
+    lineHeight: 14,
     marginTop: 2,
-    marginBottom: 2,
+    marginBottom: 4,
+    includeFontPadding: false,
   },
   tabItem: {
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     alignItems: 'center',
-    paddingTop: 4,
+    paddingTop: 6,
+    paddingBottom: 4,
   },
   tabIcon: {
+    marginTop: 2,
     marginBottom: 0,
   },
   createBtn: {
