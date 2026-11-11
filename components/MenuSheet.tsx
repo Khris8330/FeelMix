@@ -11,7 +11,7 @@ type Props = {
 
 const ITEMS = [
   { id: 'search', label: 'Search', icon: 'search', href: '/search' },
-  { id: 'settings', label: 'Settings', icon: 'settings-outline', href: null },
+  { id: 'settings', label: 'Settings', icon: 'settings-outline', href: '/settings' },
   { id: 'saved', label: 'Saved', icon: 'bookmark-outline', href: null },
   { id: 'help', label: 'Help and support', icon: 'help-outline', href: null },
 ] as const;
