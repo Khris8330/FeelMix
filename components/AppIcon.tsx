@@ -6,7 +6,7 @@ type Props = {
   color?: string;
 };
 
-/** Facebook-style outline / filled icons rendered as SVG (works on web without font files). */
+/** Outline / filled icons as SVG (works on web without font files). */
 export function AppIcon({ name, size = 22, color = '#F5F5F7' }: Props) {
   const s = size;
   const stroke = 1.8;
@@ -51,6 +51,12 @@ export function AppIcon({ name, size = 22, color = '#F5F5F7' }: Props) {
         </Svg>
       );
     case 'person':
+      return (
+        <Svg width={s} height={s} viewBox="0 0 24 24" fill={color}>
+          <Circle cx="12" cy="8" r="3.6" />
+          <Path d="M5 19.5c0-3.6 3.1-6.2 7-6.2s7 2.6 7 6.2v0.5H5v-0.5z" />
+        </Svg>
+      );
     case 'person-outline':
       return (
         <Svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={stroke}>
@@ -102,10 +108,17 @@ export function AppIcon({ name, size = 22, color = '#F5F5F7' }: Props) {
           <Path d="M12 20.5s-7-4.4-7-9.2A4.3 4.3 0 0112 7.5a4.3 4.3 0 017 3.8c0 4.8-7 9.2-7 9.2z" />
         </Svg>
       );
+    // X-style message bubble (rounded speech bubble with tail)
+    case 'chatbubble':
+      return (
+        <Svg width={s} height={s} viewBox="0 0 24 24" fill={color}>
+          <Path d="M4.5 5.5h15A1.5 1.5 0 0121 7v9a1.5 1.5 0 01-1.5 1.5H9.2L5 20.5v-3H4.5A1.5 1.5 0 013 16V7A1.5 1.5 0 014.5 5.5z" />
+        </Svg>
+      );
     case 'chatbubble-outline':
       return (
         <Svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={stroke} strokeLinejoin="round">
-          <Path d="M5 5.5h14a1.5 1.5 0 011.5 1.5v8a1.5 1.5 0 01-1.5 1.5H9l-4 3v-3H5A1.5 1.5 0 013.5 15V7A1.5 1.5 0 015 5.5z" />
+          <Path d="M4.5 5.5h15A1.5 1.5 0 0121 7v9a1.5 1.5 0 01-1.5 1.5H9.2L5 20.5v-3H4.5A1.5 1.5 0 013 16V7A1.5 1.5 0 014.5 5.5z" />
         </Svg>
       );
     case 'arrow-redo-outline':
@@ -216,6 +229,36 @@ export function AppIcon({ name, size = 22, color = '#F5F5F7' }: Props) {
           <Circle cx="12" cy="12" r="9" />
           <Path d="M9.5 9.5a2.5 2.5 0 015 0c0 1.5-2.5 2-2.5 3.5" />
           <Circle cx="12" cy="17" r="0.8" fill={color} stroke="none" />
+        </Svg>
+      );
+    case 'information-circle-outline':
+      return (
+        <Svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round">
+          <Circle cx="12" cy="12" r="9" />
+          <Line x1="12" y1="11" x2="12" y2="16" />
+          <Circle cx="12" cy="8" r="0.8" fill={color} stroke="none" />
+        </Svg>
+      );
+    case 'lock-closed-outline':
+      return (
+        <Svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round">
+          <Rect x="5" y="11" width="14" height="10" rx="2" />
+          <Path d="M8 11V8a4 4 0 018 0v3" />
+        </Svg>
+      );
+    case 'at-outline':
+      return (
+        <Svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round">
+          <Circle cx="12" cy="12" r="3.2" />
+          <Path d="M16.5 12v1.2a2.2 2.2 0 004.3 0V12a8.5 8.5 0 10-3.4 6.8" />
+        </Svg>
+      );
+    case 'log-out-outline':
+      return (
+        <Svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round">
+          <Path d="M9 7V5.5A1.5 1.5 0 0110.5 4h8A1.5 1.5 0 0120 5.5v13a1.5 1.5 0 01-1.5 1.5h-8A1.5 1.5 0 019 18.5V17" />
+          <Path d="M13 12H4" />
+          <Path d="M7 9l-3 3 3 3" />
         </Svg>
       );
     default:

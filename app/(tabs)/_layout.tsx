@@ -7,6 +7,26 @@ import { AppIcon } from '@/components/AppIcon';
 import { getSession } from '@/lib/session';
 import { supabase } from '@/lib/supabase';
 
+const ICON_SIZE = 24;
+
+function TabIcon({
+  name,
+  focused,
+}: {
+  name: string;
+  focused: boolean;
+}) {
+  return (
+    <View style={[styles.iconCircle, focused && styles.iconCircleActive]}>
+      <AppIcon
+        name={name}
+        size={ICON_SIZE}
+        color={focused ? colors.white : colors.text}
+      />
+    </View>
+  );
+}
+
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -39,8 +59,6 @@ export default function TabsLayout() {
     };
   }, [router]);
 
-  // Mobile Chrome often reports 0 inset but still covers the bottom of the page.
-  // Keep generous padding so labels (Home, Discover, etc.) are fully visible.
   const bottomPad = Math.max(
     insets.bottom,
     isMobileWeb ? 42 : Platform.OS === 'web' ? 20 : 14
@@ -62,10 +80,9 @@ export default function TabsLayout() {
           backgroundColor: colors.bg,
           borderTopColor: colors.border,
           borderTopWidth: 1,
-          // Let padding define space; avoid fixed height clipping labels on web.
           height: undefined as unknown as number,
-          minHeight: 56 + bottomPad,
-          paddingTop: 6,
+          minHeight: 64 + bottomPad,
+          paddingTop: 8,
           paddingBottom: bottomPad,
           overflow: 'visible',
         },
@@ -81,8 +98,8 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color, focused }) => (
-            <AppIcon name={focused ? 'home' : 'home-outline'} size={22} color={color} />
+          tabBarIcon: ({ focused }) => (
+            <TabIcon name={focused ? 'home' : 'home-outline'} focused={focused} />
           ),
         }}
       />
@@ -90,12 +107,8 @@ export default function TabsLayout() {
         name="discover"
         options={{
           title: 'Discover',
-          tabBarIcon: ({ color, focused }) => (
-            <AppIcon
-              name={focused ? 'compass' : 'compass-outline'}
-              size={22}
-              color={color}
-            />
+          tabBarIcon: ({ focused }) => (
+            <TabIcon name="compass-outline" focused={focused} />
           ),
         }}
       />
@@ -115,11 +128,10 @@ export default function TabsLayout() {
         name="messages"
         options={{
           title: 'Messages',
-          tabBarIcon: ({ color, focused }) => (
-            <AppIcon
+          tabBarIcon: ({ focused }) => (
+            <TabIcon
               name={focused ? 'chatbubble' : 'chatbubble-outline'}
-              size={22}
-              color={color}
+              focused={focused}
             />
           ),
         }}
@@ -128,11 +140,10 @@ export default function TabsLayout() {
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color, focused }) => (
-            <AppIcon
+          tabBarIcon: ({ focused }) => (
+            <TabIcon
               name={focused ? 'person' : 'person-outline'}
-              size={22}
-              color={color}
+              focused={focused}
             />
           ),
         }}
@@ -154,22 +165,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  iconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconCircleActive: {
+    backgroundColor: colors.surfaceElevated,
+    borderColor: 'rgba(255,255,255,0.28)',
+  },
   tabLabel: {
     fontSize: 11,
     fontWeight: '600',
     lineHeight: 14,
-    marginTop: 2,
+    marginTop: 4,
     marginBottom: 4,
     includeFontPadding: false,
   },
   tabItem: {
     justifyContent: 'flex-start',
     alignItems: 'center',
-    paddingTop: 6,
+    paddingTop: 4,
     paddingBottom: 4,
   },
   tabIcon: {
-    marginTop: 2,
+    marginTop: 0,
     marginBottom: 0,
   },
   createBtn: {
@@ -179,7 +204,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: -18,
+    marginTop: -14,
     shadowColor: colors.primary,
     shadowOpacity: 0.45,
     shadowRadius: 14,
