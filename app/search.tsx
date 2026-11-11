@@ -22,6 +22,7 @@ import {
 import { followUser, unfollowUser } from '@/lib/follows';
 import { formatRelativeTime } from '@/lib/posts';
 import { initials } from '@/lib/profile';
+import { safeGoBack } from '@/lib/navigation';
 
 type Tab = 'people' | 'posts';
 
@@ -77,7 +78,13 @@ export default function SearchScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={12} style={styles.backBtn}>
+        <Pressable
+          onPress={() => safeGoBack(router)}
+          hitSlop={16}
+          style={styles.backBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
           <AppIcon name="arrow-back" size={22} color={colors.text} />
         </Pressable>
         <View style={styles.inputWrap}>
@@ -220,11 +227,12 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
+    zIndex: 10,
   },
   backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.surface,
