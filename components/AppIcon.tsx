@@ -108,17 +108,17 @@ export function AppIcon({ name, size = 22, color = '#F5F5F7' }: Props) {
           <Path d="M12 20.5s-7-4.4-7-9.2A4.3 4.3 0 0112 7.5a4.3 4.3 0 017 3.8c0 4.8-7 9.2-7 9.2z" />
         </Svg>
       );
-    // X-style message bubble (rounded speech bubble with tail)
+    // X-style messages: soft rounded bubble + small lower-left tip
     case 'chatbubble':
       return (
         <Svg width={s} height={s} viewBox="0 0 24 24" fill={color}>
-          <Path d="M4.5 5.5h15A1.5 1.5 0 0121 7v9a1.5 1.5 0 01-1.5 1.5H9.2L5 20.5v-3H4.5A1.5 1.5 0 013 16V7A1.5 1.5 0 014.5 5.5z" />
+          <Path d="M12 3.5c-4.7 0-8.5 3.2-8.5 7.1 0 2.2 1.1 4.1 2.9 5.5-.2 1.1-.8 2.3-1.7 3.4 1.6-.3 3-.9 4.1-1.7 1 .3 2.1.5 3.2.5 4.7 0 8.5-3.2 8.5-7.1S16.7 3.5 12 3.5z" />
         </Svg>
       );
     case 'chatbubble-outline':
       return (
-        <Svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={stroke} strokeLinejoin="round">
-          <Path d="M4.5 5.5h15A1.5 1.5 0 0121 7v9a1.5 1.5 0 01-1.5 1.5H9.2L5 20.5v-3H4.5A1.5 1.5 0 013 16V7A1.5 1.5 0 014.5 5.5z" />
+        <Svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.9} strokeLinejoin="round">
+          <Path d="M12 4c-4.4 0-8 3-8 6.7 0 2.1 1.1 3.9 2.8 5.2-.2 1-.7 2.1-1.5 3.1 1.5-.3 2.8-.8 3.8-1.5.9.3 1.9.4 2.9.4 4.4 0 8-3 8-6.7S16.4 4 12 4z" />
         </Svg>
       );
     case 'arrow-redo-outline':

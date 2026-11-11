@@ -20,6 +20,8 @@ import { fetchMyProfile, initials, type Profile } from '@/lib/profile';
 import { fetchFeedPosts, type FeedPost } from '@/lib/posts';
 import { unreadNotificationCount } from '@/lib/notifications';
 
+const HEADER_ICON_SIZE = 24;
+
 export default function HomeScreen() {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -58,21 +60,21 @@ export default function HomeScreen() {
         </Text>
         <View style={styles.headerActions}>
           <Pressable hitSlop={10} onPress={() => router.push('/search')} style={styles.iconBtn}>
-            <AppIcon name="search" size={22} color={colors.text} />
+            <AppIcon name="search" size={HEADER_ICON_SIZE} color={colors.text} />
           </Pressable>
           <Pressable hitSlop={10} onPress={() => router.push('/mood')} style={styles.iconBtn}>
-            <AppIcon name="musical-notes" size={22} color={colors.text} />
+            <AppIcon name="musical-notes" size={HEADER_ICON_SIZE} color={colors.text} />
           </Pressable>
           <Pressable
             hitSlop={10}
             style={styles.iconBtn}
             onPress={() => router.push('/notifications')}
           >
-            <AppIcon name="notifications-outline" size={22} color={colors.text} />
+            <AppIcon name="notifications-outline" size={HEADER_ICON_SIZE} color={colors.text} />
             {unread > 0 ? <View style={styles.badgeDot} /> : null}
           </Pressable>
           <Pressable hitSlop={10} onPress={() => setMenuOpen(true)} style={styles.iconBtn}>
-            <AppIcon name="menu" size={22} color={colors.text} />
+            <AppIcon name="menu" size={HEADER_ICON_SIZE} color={colors.text} />
           </Pressable>
         </View>
       </View>
@@ -172,19 +174,19 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   iconBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(255,255,255,0.14)',
   },
   badgeDot: {
     position: 'absolute',
-    top: 10,
-    right: 11,
+    top: 9,
+    right: 10,
     width: 8,
     height: 8,
     borderRadius: 4,

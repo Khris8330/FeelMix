@@ -61,7 +61,7 @@ export default function TabsLayout() {
 
   const bottomPad = Math.max(
     insets.bottom,
-    isMobileWeb ? 42 : Platform.OS === 'web' ? 20 : 14
+    isMobileWeb ? 36 : Platform.OS === 'web' ? 18 : 12
   );
 
   if (!allowed) {
@@ -81,8 +81,8 @@ export default function TabsLayout() {
           borderTopColor: colors.border,
           borderTopWidth: 1,
           height: undefined as unknown as number,
-          minHeight: 64 + bottomPad,
-          paddingTop: 8,
+          minHeight: 58 + bottomPad,
+          paddingTop: 2,
           paddingBottom: bottomPad,
           overflow: 'visible',
         },
@@ -174,6 +174,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.14)',
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 10,
   },
   iconCircleActive: {
     backgroundColor: colors.surfaceElevated,
@@ -183,15 +184,15 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     lineHeight: 14,
-    marginTop: 4,
-    marginBottom: 4,
+    marginTop: 2,
+    marginBottom: 2,
     includeFontPadding: false,
   },
   tabItem: {
-    justifyContent: 'flex-start',
+    justifyContent: 'flex-end',
     alignItems: 'center',
-    paddingTop: 4,
-    paddingBottom: 4,
+    paddingTop: 0,
+    paddingBottom: 2,
   },
   tabIcon: {
     marginTop: 0,
@@ -204,7 +205,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: -14,
+    marginTop: 4,
     shadowColor: colors.primary,
     shadowOpacity: 0.45,
     shadowRadius: 14,
