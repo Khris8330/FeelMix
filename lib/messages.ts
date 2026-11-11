@@ -90,6 +90,19 @@ export async function requestDm(toUserId: string) {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return { error: new Error('Not signed in'), data: null };
 
+  const { data: target } = await supabase
+    .from('profiles')
+    .select('allow_message_requests')
+    .eq('id', toUserId)
+    .maybeSingle();
+
+  if (target && target.allow_message_requests === false) {
+    return {
+      error: new Error('This person is not accepting message requests.'),
+      data: null,
+    };
+  }
+
   const { data, error } = await supabase
     .from('dm_requests')
     .insert({

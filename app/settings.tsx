@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { colors, radii, spacing } from '@/constants/theme';
 import { AppIcon } from '@/components/AppIcon';
-import { fetchMyProfile, type Profile } from '@/lib/profile';
+import { fetchMyProfile, updateMyProfile, type Profile } from '@/lib/profile';
 import { signOut } from '@/lib/session';
 
 function Row({
@@ -26,7 +26,7 @@ function Row({
 }: {
   icon: string;
   label: string;
-  value?: string;
+  value?: stringstring;
   onPress?: () => void;
   danger?: boolean;
   right?: React.ReactNode;
@@ -66,16 +66,48 @@ export default function SettingsScreen() {
   const [loggingOut, setLoggingOut] = useState(false);
   const [privateAccount, setPrivateAccount] = useState(false);
   const [allowMessageRequests, setAllowMessageRequests] = useState(true);
+  const [savingKey, setSavingKey] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
       (async () => {
         const p = await fetchMyProfile();
         setProfile(p);
+        if (p) {
+          setPrivateAccount(!!p.is_private);
+          setAllowMessageRequests(p.allow_message_requests !== false);
+        }
         setLoading(false);
       })();
     }, [])
   );
+
+  const savePrivacy = async (
+    key: 'is_private' | 'allow_message_requests',
+    value: boolean
+  ) => {
+    setSavingKey(key);
+    const { error, data } = await updateMyProfile({ [key]: value });
+    setSavingKey(null);
+    if (error) {
+      Alert.alert('Could not save', error.message);
+      // revert
+      if (key === 'is_private') setPrivateAccount(!value);
+      else setAllowMessageRequests(!value);
+      return;
+    }
+    if (data) setProfile(data);
+  };
+
+  const onTogglePrivate = (value: boolean) => {
+    setPrivateAccount(value);
+    savePrivacy('is_private', value);
+  };
+
+  const onToggleMessageRequests = (value: boolean) => {
+    setAllowMessageRequests(value);
+    savePrivacy('allow_message_requests', value);
+  };
 
   const onLogout = async () => {
     setLoggingOut(true);
@@ -135,14 +167,18 @@ export default function SettingsScreen() {
           <Row
             icon="lock-closed-outline"
             label="Private account"
-            value="Only approved followers can see your posts"
+            value="Only people you follow back can see your posts in their feed"
             right={
-              <Switch
-                value={privateAccount}
-                onValueChange={setPrivateAccount}
-                trackColor={{ false: colors.border, true: colors.primary }}
-                thumbColor={colors.white}
-              />
+              savingKey === 'is_private' ? (
+                <ActivityIndicator color={colors.primary} />
+              ) : (
+                <Switch
+                  value={privateAccount}
+                  onValueChange={onTogglePrivate}
+                  trackColor={{ false: colors.border, true: colors.primary }}
+                  thumbColor={colors.white}
+                />
+              )
             }
           />
           <Row
@@ -150,12 +186,16 @@ export default function SettingsScreen() {
             label="Message requests"
             value="Allow others to request a chat"
             right={
-              <Switch
-                value={allowMessageRequests}
-                onValueChange={setAllowMessageRequests}
-                trackColor={{ false: colors.border, true: colors.primary }}
-                thumbColor={colors.white}
-              />
+              savingKey === 'allow_message_requests' ? (
+                <ActivityIndicator color={colors.primary} />
+              ) : (
+                <Switch
+                  value={allowMessageRequests}
+                  onValueChange={onToggleMessageRequests}
+                  trackColor={{ false: colors.border, true: colors.primary }}
+                  thumbColor={colors.white}
+                />
+              )
             }
           />
         </View>

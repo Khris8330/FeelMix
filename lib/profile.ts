@@ -13,6 +13,8 @@ export type Profile = {
   followers_count: number;
   following_count: number;
   vibes_count: number;
+  is_private: boolean;
+  allow_message_requests: boolean;
 };
 
 export type PublicProfile = Profile & {
@@ -20,15 +22,16 @@ export type PublicProfile = Profile & {
   is_own: boolean;
 };
 
+const PROFILE_SELECT =
+  'id, handle, display_name, avatar_url, bio, status_emoji, is_verified, posts_count, followers_count, following_count, vibes_count, is_private, allow_message_requests';
+
 export async function fetchMyProfile(): Promise<Profile | null> {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return null;
 
   const { data, error } = await supabase
     .from('profiles')
-    .select(
-      'id, handle, display_name, avatar_url, bio, status_emoji, is_verified, posts_count, followers_count, following_count, vibes_count'
-    )
+    .select(PROFILE_SELECT)
     .eq('id', auth.user.id)
     .maybeSingle();
 
@@ -42,9 +45,7 @@ export async function fetchProfileById(userId: string): Promise<PublicProfile | 
 
   const { data, error } = await supabase
     .from('profiles')
-    .select(
-      'id, handle, display_name, avatar_url, bio, status_emoji, is_verified, posts_count, followers_count, following_count, vibes_count'
-    )
+    .select(PROFILE_SELECT)
     .eq('id', userId)
     .maybeSingle();
 
@@ -64,6 +65,8 @@ export async function updateMyProfile(patch: {
   bio?: string | null;
   handle?: string;
   avatar_url?: string | null;
+  is_private?: boolean;
+  allow_message_requests?: boolean;
 }) {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return { error: new Error('Not signed in') };
@@ -72,9 +75,7 @@ export async function updateMyProfile(patch: {
     .from('profiles')
     .update(patch)
     .eq('id', auth.user.id)
-    .select(
-      'id, handle, display_name, avatar_url, bio, status_emoji, is_verified, posts_count, followers_count, following_count, vibes_count'
-    )
+    .select(PROFILE_SELECT)
     .single();
 
   return { data: data as Profile | null, error };
