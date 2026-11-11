@@ -189,7 +189,9 @@ export default function ProfileScreen() {
       >
         <View style={styles.topBar}>
           <Text style={styles.topTitle}>Profile</Text>
-          <AppIcon name="settings-outline" size={22} color={colors.text} />
+          <Pressable onPress={() => router.push('/settings')} hitSlop={12}>
+            <AppIcon name="settings-outline" size={22} color={colors.text} />
+          </Pressable>
         </View>
 
         <View style={styles.hero}>
