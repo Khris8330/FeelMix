@@ -15,6 +15,7 @@ import { colors, radii, spacing } from '@/constants/theme';
 import { AppIcon } from '@/components/AppIcon';
 import { fetchMyProfile, updateMyProfile, type Profile } from '@/lib/profile';
 import { signOut } from '@/lib/session';
+import { safeGoBack } from '@/lib/navigation';
 
 function Row({
   icon,
@@ -137,7 +138,13 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={12} style={styles.backBtn}>
+        <Pressable
+          onPress={() => safeGoBack(router)}
+          hitSlop={16}
+          style={styles.backBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
           <AppIcon name="arrow-back" size={22} color={colors.text} />
         </Pressable>
         <Text style={styles.title}>Settings</Text>
@@ -256,11 +263,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
+    zIndex: 10,
   },
   backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.surface,

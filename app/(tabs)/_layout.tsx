@@ -39,11 +39,13 @@ export default function TabsLayout() {
     };
   }, [router]);
 
+  // Chrome Android often reports insets.bottom = 0 while the browser chrome still eats space.
   const bottomPad = Math.max(
     insets.bottom,
-    isMobileWeb ? 22 : Platform.OS === 'web' ? 14 : 10
+    isMobileWeb ? 30 : Platform.OS === 'web' ? 18 : 12
   );
-  const barHeight = (isMobileWeb ? 62 : 56) + bottomPad;
+  const contentHeight = isMobileWeb ? 56 : 52;
+  const barHeight = contentHeight + bottomPad + 10;
 
   if (!allowed) {
     return (
@@ -70,6 +72,7 @@ export default function TabsLayout() {
         tabBarInactiveTintColor: colors.textMuted,
         tabBarLabelStyle: styles.tabLabel,
         tabBarItemStyle: styles.tabItem,
+        tabBarIconStyle: styles.tabIcon,
         tabBarHideOnKeyboard: true,
       }}
     >
@@ -154,11 +157,15 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     marginTop: 2,
+    marginBottom: 2,
   },
   tabItem: {
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 2,
+    paddingTop: 4,
+  },
+  tabIcon: {
+    marginBottom: 0,
   },
   createBtn: {
     width: 52,
@@ -167,7 +174,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: -16,
+    marginTop: -18,
     shadowColor: colors.primary,
     shadowOpacity: 0.45,
     shadowRadius: 14,

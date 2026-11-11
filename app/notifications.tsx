@@ -22,6 +22,7 @@ import {
 } from '@/lib/notifications';
 import { formatRelativeTime } from '@/lib/posts';
 import { initials } from '@/lib/profile';
+import { safeGoBack } from '@/lib/navigation';
 
 export default function NotificationsScreen() {
   const router = useRouter();
@@ -46,7 +47,7 @@ export default function NotificationsScreen() {
   const open = async (n: AppNotification) => {
     await markNotificationRead(n.id);
     if (n.type === 'dm_request') {
-      router.push('/messages');
+      router.push('/(tabs)/messages');
       return;
     }
     if (n.type === 'follow' && n.actor?.id) {
@@ -61,7 +62,13 @@ export default function NotificationsScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={12} style={styles.backBtn}>
+        <Pressable
+          onPress={() => safeGoBack(router)}
+          hitSlop={16}
+          style={styles.backBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
           <AppIcon name="arrow-back" size={22} color={colors.text} />
         </Pressable>
         <Text style={styles.title}>Notifications</Text>
@@ -127,11 +134,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
+    zIndex: 10,
   },
   backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.surface,

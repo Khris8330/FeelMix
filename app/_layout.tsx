@@ -38,6 +38,10 @@ export default function RootLayout() {
             options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
           />
           <Stack.Screen name="notifications" />
+          <Stack.Screen name="settings" />
+          <Stack.Screen name="search" />
+          <Stack.Screen name="messages/index" />
+          <Stack.Screen name="messages/[id]" />
           <Stack.Screen name="story/[id]" />
           <Stack.Screen name="post/[id]" />
           <Stack.Screen name="user/[id]" />
