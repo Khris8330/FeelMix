@@ -26,7 +26,7 @@ function Row({
 }: {
   icon: string;
   label: string;
-  value?: stringstring;
+  value?: string;
   onPress?: () => void;
   danger?: boolean;
   right?: React.ReactNode;
@@ -91,7 +91,6 @@ export default function SettingsScreen() {
     setSavingKey(null);
     if (error) {
       Alert.alert('Could not save', error.message);
-      // revert
       if (key === 'is_private') setPrivateAccount(!value);
       else setAllowMessageRequests(!value);
       return;
