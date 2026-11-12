@@ -9,6 +9,7 @@ export type FeedAuthor = {
   avatar_url: string | null;
   is_verified: boolean;
   status_emoji: string | null;
+  is_private?: boolean;
 };
 
 export type FeedVibe = {
@@ -85,6 +86,7 @@ function mapRow(
       avatar_url: author.avatar_url,
       is_verified: !!author.is_verified,
       status_emoji: author.status_emoji,
+      is_private: !!author.is_private,
     },
     vibe: vibeRow
       ? {
@@ -140,27 +142,39 @@ async function engagementSets(postIds: string[]) {
 
 const postSelect = `
   id, body, image_url, likes_count, comments_count, reposts_count, shares_count, created_at, visibility, author_id,
-  profiles!posts_author_id_fkey ( id, handle, display_name, avatar_url, is_verified, status_emoji ),
+  profiles!posts_author_id_fkey ( id, handle, display_name, avatar_url, is_verified, status_emoji, is_private ),
   vibes ( mood_title, mood_subtitle, track_name, track_artist, movie_title, movie_year, movie_director, cover_url ),
   post_images ( url, sort_order )
 `;
 
+function canSeePost(
+  post: FeedPost,
+  meId: string | undefined,
+  followingIds: Set<string>
+): boolean {
+  if (!meId) return post.visibility === 'public' && !post.author.is_private;
+  if (post.author_id === meId) return true;
+  if (post.visibility === 'private') return false;
+  if (post.author.is_private && !followingIds.has(post.author_id)) return false;
+  if (post.visibility === 'followers' && !followingIds.has(post.author_id)) return false;
+  return true;
+}
+
 export async function fetchFeedPosts(limit = 40): Promise<FeedPost[]> {
   const { data: auth } = await supabase.auth.getUser();
   const me = auth.user?.id;
+  const followingList = me ? await getFollowingIds() : [];
+  const followingIds = new Set(followingList);
 
   let query = supabase
     .from('posts')
     .select(postSelect)
     .is('deleted_at', null)
     .order('created_at', { ascending: false })
-    .limit(limit);
+    .limit(Math.max(limit * 2, 40));
 
-  if (me) {
-    const followingIds = await getFollowingIds();
-    if (followingIds.length > 0) {
-      query = query.in('author_id', [...followingIds, me]);
-    }
+  if (me && followingList.length > 0) {
+    query = query.in('author_id', [...followingList, me]);
   }
 
   let { data, error } = await query;
@@ -171,7 +185,7 @@ export async function fetchFeedPosts(limit = 40): Promise<FeedPost[]> {
       .select(postSelect)
       .is('deleted_at', null)
       .order('created_at', { ascending: false })
-      .limit(limit);
+      .limit(Math.max(limit * 2, 40));
     data = fallback.data;
     error = fallback.error;
   }
@@ -183,7 +197,10 @@ export async function fetchFeedPosts(limit = 40): Promise<FeedPost[]> {
 
   const ids = data.map((r) => r.id);
   const { liked, reposted, myReactions } = await engagementSets(ids);
-  return data.map((r) => mapRow(r, liked, reposted, myReactions));
+  return data
+    .map((r) => mapRow(r, liked, reposted, myReactions))
+    .filter((p) => canSeePost(p, me, followingIds))
+    .slice(0, limit);
 }
 
 export async function fetchPostsByAuthor(authorId: string): Promise<FeedPost[]> {
@@ -371,7 +388,6 @@ export async function deletePost(postId: string) {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return { error: new Error('Not signed in') };
 
-  // Soft-delete without RETURNING first (RETURNING used to fail SELECT RLS when deleted_at was set)
   const { error } = await supabase
     .from('posts')
     .update({ deleted_at: new Date().toISOString() })

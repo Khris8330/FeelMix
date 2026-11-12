@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TextInput,
   Pressable,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Image,
@@ -21,6 +20,8 @@ import { ImageEditorModal } from '@/components/ImageEditorModal';
 import { fetchMyProfile, initials, type Profile } from '@/lib/profile';
 import { createPost } from '@/lib/posts';
 import { uploadManyPostImages } from '@/lib/media';
+import { safeGoBack } from '@/lib/navigation';
+import { showError, showToast } from '@/lib/toast';
 
 type LocalImage = {
   id: string;
@@ -45,13 +46,13 @@ export default function CreateScreen() {
   const pickPhoto = async () => {
     const remaining = MAX_IMAGES - images.length;
     if (remaining <= 0) {
-      Alert.alert('Limit reached', `You can add up to ${MAX_IMAGES} photos.`);
+      showToast('Limit reached', `You can add up to ${MAX_IMAGES} photos.`);
       return;
     }
 
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted && Platform.OS !== 'web') {
-      Alert.alert('Permission needed', 'Allow photo access to attach images.');
+      showError('Allow photo access to attach images.', 'Permission needed');
       return;
     }
 
@@ -78,7 +79,7 @@ export default function CreateScreen() {
 
   const publish = async () => {
     if (!body.trim() && !images.length) {
-      Alert.alert('Add something', 'Write a thought or add a photo.');
+      showToast('Add something', 'Write a thought or add a photo.');
       return;
     }
     setPosting(true);
@@ -90,7 +91,7 @@ export default function CreateScreen() {
       );
       if (upError || !uploaded.length) {
         setPosting(false);
-        Alert.alert('Photo upload failed', upError?.message || 'Try again');
+        showError(upError?.message || 'Try again', 'Photo upload failed');
         return;
       }
       urls = uploaded;
@@ -99,11 +100,12 @@ export default function CreateScreen() {
     const { error } = await createPost(body.trim(), urls);
     setPosting(false);
     if (error) {
-      Alert.alert('Could not post', error.message);
+      showError(error.message, 'Could not post');
       return;
     }
     setBody('');
     setImages([]);
+    showToast('Posted');
     router.replace('/(tabs)');
   };
 
@@ -117,7 +119,7 @@ export default function CreateScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()} disabled={posting}>
+          <Pressable onPress={() => safeGoBack(router)} disabled={posting}>
             <Text style={styles.cancel}>Cancel</Text>
           </Pressable>
           <Text style={styles.title}>Create post</Text>
