@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { colors, radii, spacing } from '@/constants/theme';
 import { AppIcon } from '@/components/AppIcon';
+import { EmptyState } from '@/components/EmptyState';
 import {
   searchPeople,
   searchPosts,
@@ -129,11 +130,15 @@ export default function SearchScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
           ListEmptyComponent={
-            <Text style={styles.empty}>
-              {query.trim()
-                ? 'No people matched that search.'
-                : 'Search by name or handle.'}
-            </Text>
+            <EmptyState
+              icon="search"
+              title={query.trim() ? 'No people found' : 'Search people'}
+              subtitle={
+                query.trim()
+                  ? 'Try another name or handle.'
+                  : 'Type a name or @handle to find someone on Krimie.'
+              }
+            />
           }
           renderItem={({ item }) => {
             const name = item.display_name || item.handle;
@@ -183,9 +188,15 @@ export default function SearchScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
           ListEmptyComponent={
-            <Text style={styles.empty}>
-              {query.trim() ? 'No posts matched that search.' : 'Search post text.'}
-            </Text>
+            <EmptyState
+              icon="search"
+              title={query.trim() ? 'No posts found' : 'Search posts'}
+              subtitle={
+                query.trim()
+                  ? 'Nothing matched that text.'
+                  : 'Search words from posts across Krimie.'
+              }
+            />
           }
           renderItem={({ item }) => {
             const name = item.author.display_name || item.author.handle || 'Someone';
@@ -278,12 +289,7 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   boot: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  list: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxxl },
-  empty: {
-    color: colors.textMuted,
-    textAlign: 'center',
-    marginTop: spacing.xxl,
-  },
+  list: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxxl, flexGrow: 1 },
   personRow: {
     flexDirection: 'row',
     alignItems: 'center',
