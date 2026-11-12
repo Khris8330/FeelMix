@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { colors, radii, spacing } from '@/constants/theme';
 import { AppIcon } from '@/components/AppIcon';
+import { EmptyState } from '@/components/EmptyState';
 import {
   fetchNotifications,
   markAllNotificationsRead,
@@ -95,7 +96,11 @@ export default function NotificationsScreen() {
           }
           contentContainerStyle={styles.list}
           ListEmptyComponent={
-            <Text style={styles.empty}>No notifications yet.</Text>
+            <EmptyState
+              icon="notifications-outline"
+              title="You're all caught up"
+              subtitle="Likes, follows, and message requests will show up here."
+            />
           }
           renderItem={({ item }) => {
             const name = item.actor?.display_name || item.actor?.handle || '?';
@@ -148,12 +153,7 @@ const styles = StyleSheet.create({
   },
   title: { color: colors.text, fontWeight: '800', fontSize: 18 },
   boot: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  list: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxxl },
-  empty: {
-    color: colors.textMuted,
-    textAlign: 'center',
-    marginTop: spacing.xxl,
-  },
+  list: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxxl, flexGrow: 1 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

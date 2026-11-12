@@ -16,6 +16,7 @@ import { PostCard } from '@/components/PostCard';
 import { StoryRail } from '@/components/StoryRail';
 import { MenuSheet } from '@/components/MenuSheet';
 import { AppIcon } from '@/components/AppIcon';
+import { EmptyState } from '@/components/EmptyState';
 import { fetchMyProfile, initials, type Profile } from '@/lib/profile';
 import { fetchFeedPosts, type FeedPost } from '@/lib/posts';
 import { unreadNotificationCount } from '@/lib/notifications';
@@ -126,9 +127,13 @@ export default function HomeScreen() {
             </View>
           }
           ListEmptyComponent={
-            <Text style={styles.empty}>
-              No posts yet. Tap + to share the first one on Krimie.
-            </Text>
+            <EmptyState
+              icon="home-outline"
+              title="Your feed is quiet"
+              subtitle="Follow people or share the first post so Krimie starts to feel alive."
+              actionLabel="Create a post"
+              onAction={() => router.push('/(tabs)/create')}
+            />
           }
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
@@ -236,15 +241,9 @@ const styles = StyleSheet.create({
   list: {
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.xxxl,
+    flexGrow: 1,
   },
   sep: {
     height: spacing.md,
-  },
-  empty: {
-    color: colors.textMuted,
-    textAlign: 'center',
-    marginTop: spacing.xxl,
-    fontSize: 14,
-    lineHeight: 20,
   },
 });

@@ -22,6 +22,7 @@ import {
 } from '@/lib/messages';
 import { formatRelativeTime } from '@/lib/posts';
 import { initials } from '@/lib/profile';
+import { EmptyState } from '@/components/EmptyState';
 
 export default function MessagesTabScreen() {
   const router = useRouter();
@@ -137,9 +138,13 @@ export default function MessagesTabScreen() {
           }
           ListEmptyComponent={
             requests.length ? null : (
-              <Text style={styles.empty}>
-                No conversations yet. Open someones profile and tap Message to request a chat.
-              </Text>
+              <EmptyState
+                icon="chatbubble-outline"
+                title="No messages yet"
+                subtitle="Open someone's profile and tap Message to start a request."
+                actionLabel="Find people"
+                onAction={() => router.push('/search')}
+              />
             )
           }
           renderItem={({ item }) => {
@@ -186,7 +191,7 @@ const styles = StyleSheet.create({
   },
   title: { color: colors.text, fontWeight: '800', fontSize: 24 },
   boot: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  list: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxxl },
+  list: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxxl, flexGrow: 1 },
   section: {
     color: colors.textSecondary,
     fontSize: 13,
@@ -249,10 +254,4 @@ const styles = StyleSheet.create({
   },
   time: { color: colors.textMuted, fontSize: 12 },
   preview: { color: colors.textSecondary, fontSize: 13, marginTop: 3 },
-  empty: {
-    color: colors.textMuted,
-    textAlign: 'center',
-    marginTop: spacing.xxl,
-    lineHeight: 20,
-  },
 });
