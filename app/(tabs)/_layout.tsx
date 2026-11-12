@@ -61,7 +61,7 @@ export default function TabsLayout() {
 
   const bottomPad = Math.max(
     insets.bottom,
-    isMobileWeb ? 36 : Platform.OS === 'web' ? 18 : 12
+    isMobileWeb ? 28 : Platform.OS === 'web' ? 14 : 10
   );
 
   if (!allowed) {
@@ -76,19 +76,19 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
+        tabBarShowLabel: false,
         tabBarStyle: {
           backgroundColor: colors.bg,
           borderTopColor: colors.border,
           borderTopWidth: 1,
           height: undefined as unknown as number,
-          minHeight: 58 + bottomPad,
-          paddingTop: 2,
+          minHeight: 52 + bottomPad,
+          paddingTop: 0,
           paddingBottom: bottomPad,
           overflow: 'visible',
         },
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
-        tabBarLabelStyle: styles.tabLabel,
         tabBarItemStyle: styles.tabItem,
         tabBarIconStyle: styles.tabIcon,
         tabBarHideOnKeyboard: true,
@@ -121,7 +121,6 @@ export default function TabsLayout() {
               <AppIcon name="add" size={28} color={colors.white} />
             </View>
           ),
-          tabBarLabel: () => null,
         }}
       />
       <Tabs.Screen
@@ -174,28 +173,19 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.14)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 10,
   },
   iconCircleActive: {
     backgroundColor: colors.surfaceElevated,
     borderColor: 'rgba(255,255,255,0.28)',
   },
-  tabLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    lineHeight: 14,
-    marginTop: 2,
-    marginBottom: 2,
-    includeFontPadding: false,
-  },
   tabItem: {
     justifyContent: 'flex-end',
     alignItems: 'center',
     paddingTop: 0,
-    paddingBottom: 2,
+    paddingBottom: 6,
   },
   tabIcon: {
-    marginTop: 0,
+    marginTop: 16,
     marginBottom: 0,
   },
   createBtn: {
@@ -205,7 +195,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 4,
+    marginTop: 16,
     shadowColor: colors.primary,
     shadowOpacity: 0.45,
     shadowRadius: 14,
