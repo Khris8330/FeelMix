@@ -17,6 +17,8 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { colors, radii, spacing } from '@/constants/theme';
 import { AppIcon } from '@/components/AppIcon';
 import { PostCard } from '@/components/PostCard';
+import { EmptyState } from '@/components/EmptyState';
+import { ProfileSkeleton } from '@/components/Skeleton';
 import { fetchMyProfile, initials, type Profile } from '@/lib/profile';
 import { fetchPostsByAuthor, type FeedPost } from '@/lib/posts';
 import {
@@ -78,7 +80,7 @@ export default function ProfileScreen() {
   const { width } = useWindowDimensions();
   const pagerRef = useRef<ScrollView>(null);
   const [tab, setTab] = useState<Tab>('posts');
-  const [peoplePage, setPeoplePage] = useState(0); // 0 following, 1 followers
+  const [peoplePage, setPeoplePage] = useState(0);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [following, setFollowing] = useState<Person[]>([]);
@@ -127,7 +129,7 @@ export default function ProfileScreen() {
     setPeoplePage(page);
   };
 
-  const toggleFollow = async (person: Person, list: 'following' | 'followers') => {
+  const toggleFollow = async (person: Person) => {
     setBusyId(person.id);
     if (person.is_following) {
       await unfollowUser(person.id);
@@ -151,9 +153,11 @@ export default function ProfileScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.safe} edges={['top']}>
-        <View style={styles.boot}>
-          <ActivityIndicator color={colors.primary} />
+        <View style={styles.topBar}>
+          <Text style={styles.topTitle}>Profile</Text>
+          <View style={{ width: 22 }} />
         </View>
+        <ProfileSkeleton />
       </SafeAreaView>
     );
   }
@@ -161,9 +165,16 @@ export default function ProfileScreen() {
   if (!profile) {
     return (
       <SafeAreaView style={styles.safe} edges={['top']}>
-        <View style={styles.boot}>
-          <Text style={styles.empty}>Could not load your profile.</Text>
-        </View>
+        <EmptyState
+          icon="person-outline"
+          title="Could not load profile"
+          subtitle="Pull to refresh or try signing in again."
+          actionLabel="Retry"
+          onAction={() => {
+            setLoading(true);
+            load();
+          }}
+        />
       </SafeAreaView>
     );
   }
@@ -263,18 +274,19 @@ export default function ProfileScreen() {
                 </View>
               ))
             ) : (
-              <Text style={styles.empty}>
-                Your posts will show up here. Share something from Create.
-              </Text>
+              <EmptyState
+                icon="image-outline"
+                title="No posts yet"
+                subtitle="Share a thought, photo, or vibe and it will land here."
+                actionLabel="Create a post"
+                onAction={() => router.push('/(tabs)/create')}
+              />
             ))}
 
           {tab === 'people' && (
             <View>
               <View style={styles.peopleTabs}>
-                <Pressable
-                  style={styles.peopleTab}
-                  onPress={() => openPeople(0)}
-                >
+                <Pressable style={styles.peopleTab} onPress={() => openPeople(0)}>
                   <Text
                     style={[
                       styles.peopleTabText,
@@ -285,10 +297,7 @@ export default function ProfileScreen() {
                   </Text>
                   {peoplePage === 0 ? <View style={styles.peopleLine} /> : null}
                 </Pressable>
-                <Pressable
-                  style={styles.peopleTab}
-                  onPress={() => openPeople(1)}
-                >
+                <Pressable style={styles.peopleTab} onPress={() => openPeople(1)}>
                   <Text
                     style={[
                       styles.peopleTabText,
@@ -309,32 +318,46 @@ export default function ProfileScreen() {
                 onMomentumScrollEnd={onPeopleScroll}
                 style={{ width }}
               >
-                <View style={{ width, paddingHorizontal: spacing.lg }}>
+                <View style={{ width }}>
                   {following.length ? (
-                    following.map((p) => (
-                      <PersonRow
-                        key={p.id}
-                        person={p}
-                        busy={busyId === p.id}
-                        onToggle={() => toggleFollow(p, 'following')}
-                      />
-                    ))
+                    <View style={{ paddingHorizontal: spacing.lg }}>
+                      {following.map((p) => (
+                        <PersonRow
+                          key={p.id}
+                          person={p}
+                          busy={busyId === p.id}
+                          onToggle={() => toggleFollow(p)}
+                        />
+                      ))}
+                    </View>
                   ) : (
-                    <Text style={styles.empty}>You are not following anyone yet.</Text>
+                    <EmptyState
+                      icon="people-outline"
+                      title="Not following anyone"
+                      subtitle="Find people on Discover or Search and follow them."
+                      actionLabel="Search people"
+                      onAction={() => router.push('/search')}
+                    />
                   )}
                 </View>
-                <View style={{ width, paddingHorizontal: spacing.lg }}>
+                <View style={{ width }}>
                   {followers.length ? (
-                    followers.map((p) => (
-                      <PersonRow
-                        key={p.id}
-                        person={p}
-                        busy={busyId === p.id}
-                        onToggle={() => toggleFollow(p, 'followers')}
-                      />
-                    ))
+                    <View style={{ paddingHorizontal: spacing.lg }}>
+                      {followers.map((p) => (
+                        <PersonRow
+                          key={p.id}
+                          person={p}
+                          busy={busyId === p.id}
+                          onToggle={() => toggleFollow(p)}
+                        />
+                      ))}
+                    </View>
                   ) : (
-                    <Text style={styles.empty}>No followers yet.</Text>
+                    <EmptyState
+                      icon="people-outline"
+                      title="No followers yet"
+                      subtitle="When people follow you, they will show up here."
+                    />
                   )}
                 </View>
               </ScrollView>
@@ -349,9 +372,13 @@ export default function ProfileScreen() {
                 </View>
               ))
             ) : (
-              <Text style={styles.empty}>
-                Shared vibes will appear here after you post a mood mix.
-              </Text>
+              <EmptyState
+                icon="musical-notes"
+                title="No vibes yet"
+                subtitle="Post a Mood Mix and your vibe cards will collect here."
+                actionLabel="Open Mood Mix"
+                onAction={() => router.push('/mood')}
+              />
             ))}
 
           {tab === 'about' && (
@@ -372,11 +399,6 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  boot: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   topBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -461,14 +483,6 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxxl,
   },
   postWrap: { marginBottom: spacing.md, paddingHorizontal: spacing.lg },
-  empty: {
-    color: colors.textMuted,
-    fontSize: 14,
-    textAlign: 'center',
-    marginTop: spacing.xxl,
-    lineHeight: 20,
-    paddingHorizontal: spacing.lg,
-  },
   about: { gap: spacing.sm, paddingHorizontal: spacing.lg },
   aboutLabel: {
     color: colors.textMuted,

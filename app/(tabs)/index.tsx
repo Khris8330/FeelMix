@@ -7,7 +7,6 @@ import {
   Pressable,
   Image,
   RefreshControl,
-  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -17,6 +16,7 @@ import { StoryRail } from '@/components/StoryRail';
 import { MenuSheet } from '@/components/MenuSheet';
 import { AppIcon } from '@/components/AppIcon';
 import { EmptyState } from '@/components/EmptyState';
+import { FeedSkeleton } from '@/components/Skeleton';
 import { fetchMyProfile, initials, type Profile } from '@/lib/profile';
 import { fetchFeedPosts, type FeedPost } from '@/lib/posts';
 import { unreadNotificationCount } from '@/lib/notifications';
@@ -81,9 +81,7 @@ export default function HomeScreen() {
       </View>
 
       {loading ? (
-        <View style={styles.boot}>
-          <ActivityIndicator color={colors.primary} />
-        </View>
+        <FeedSkeleton count={3} />
       ) : (
         <FlatList
           data={feed}
@@ -150,11 +148,6 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: colors.bg,
-  },
-  boot: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   header: {
     flexDirection: 'row',
