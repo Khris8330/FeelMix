@@ -6,7 +6,6 @@ import {
   FlatList,
   Pressable,
   Image,
-  ActivityIndicator,
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,6 +13,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { colors, radii, spacing } from '@/constants/theme';
 import { AppIcon } from '@/components/AppIcon';
 import { EmptyState } from '@/components/EmptyState';
+import { ListSkeleton } from '@/components/Skeleton';
 import {
   fetchNotifications,
   markAllNotificationsRead,
@@ -32,11 +32,14 @@ export default function NotificationsScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
-    const list = await fetchNotifications();
-    setItems(list);
-    setLoading(false);
-    setRefreshing(false);
-    await markAllNotificationsRead();
+    try {
+      const list = await fetchNotifications();
+      setItems(list);
+      await markAllNotificationsRead();
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, []);
 
   useFocusEffect(
@@ -54,6 +57,13 @@ export default function NotificationsScreen() {
     if (n.type === 'follow' && n.actor?.id) {
       router.push(`/user/${n.actor.id}`);
       return;
+    }
+    if (n.type === 'story_reply') {
+      const storyId = n.meta?.story_id;
+      if (storyId) {
+        router.push(`/story/${storyId}`);
+        return;
+      }
     }
     if (n.post_id) {
       router.push(`/post/${n.post_id}`);
@@ -77,9 +87,7 @@ export default function NotificationsScreen() {
       </View>
 
       {loading ? (
-        <View style={styles.boot}>
-          <ActivityIndicator color={colors.primary} />
-        </View>
+        <ListSkeleton rows={8} />
       ) : (
         <FlatList
           data={items}
@@ -152,7 +160,6 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   title: { color: colors.text, fontWeight: '800', fontSize: 18 },
-  boot: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   list: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxxl, flexGrow: 1 },
   row: {
     flexDirection: 'row',
