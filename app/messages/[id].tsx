@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useStateState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -56,7 +56,6 @@ export default function ChatThreadScreen() {
     load();
   }, [load]);
 
-  // Incoming messages + mark read
   useEffect(() => {
     if (!id) return;
     const channel = subscribeMessages(id, (row) => {
@@ -83,7 +82,6 @@ export default function ChatThreadScreen() {
     return () => removeChannel(channel);
   }, [id, meId]);
 
-  // Typing indicator channel (broadcast)
   useEffect(() => {
     if (!id || !meId) return;
 
@@ -180,7 +178,7 @@ export default function ChatThreadScreen() {
         >
           <FlatList
             ref={listRef}
-            data={messages}
+             data={messages}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.list}
             onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
