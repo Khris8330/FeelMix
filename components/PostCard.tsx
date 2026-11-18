@@ -30,7 +30,7 @@ import {
 import { initials } from '@/lib/profile';
 import { supabase } from '@/lib/supabase';
 import { sharePost, shareVibePost } from '@/lib/share';
-import { showError } from '@/lib/toast';
+import { showError, showToast } from '@/lib/toast';
 import { VibeCard } from './VibeCard';
 import { AppIcon } from './AppIcon';
 import { PostImages } from './PostImages';
@@ -39,6 +39,8 @@ type Props = {
   post: FeedPost;
   onRemoved?: (postId: string) => void;
 };
+
+const MAX_POST_LEN = 2000;
 
 const REACTIONS: { type: string; emoji: string; label: string }[] = [
   { type: 'love', emoji: '❤️', label: 'Love' },
@@ -68,7 +70,7 @@ export function PostCard({ post, onRemoved }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [privacyOpen, setPrivacyOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [editText, setEditText] = useState(post.body);
+  const [editText, setEditText] = useState(post.body || '');
   const [saving, setSaving] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [comments, setComments] = useState<CommentItem[]>([]);
@@ -137,7 +139,6 @@ export function PostCard({ post, onRemoved }: Props) {
   };
 
   const openComments = async () => {
-    // Prefer the full post page for comments UX
     openPost();
   };
 
@@ -178,23 +179,30 @@ export function PostCard({ post, onRemoved }: Props) {
       showError(error.message, 'Could not delete');
       return;
     }
+    showToast('Post deleted');
     onRemoved?.(post.id);
   };
 
   const saveEdit = async () => {
-    if (!editText.trim()) {
-      Alert.alert('Empty post', 'Write something before saving.');
+    const next = editText.trim();
+    if (!next) {
+      showError('Write something before saving.', 'Empty post');
+      return;
+    }
+    if (next.length > MAX_POST_LEN) {
+      showError(`Keep it under ${MAX_POST_LEN} characters.`, 'Too long');
       return;
     }
     setSaving(true);
-    const { error } = await updatePostBody(post.id, editText);
+    const { error } = await updatePostBody(post.id, next);
     setSaving(false);
     if (error) {
       showError(error.message, 'Could not save');
       return;
     }
-    setBody(editText.trim());
+    setBody(next);
     setEditOpen(false);
+    showToast('Post updated');
   };
 
   const setPrivacy = async (v: 'public' | 'followers' | 'private') => {
@@ -207,6 +215,9 @@ export function PostCard({ post, onRemoved }: Props) {
     }
     setVisibility(v);
     setPrivacyOpen(false);
+    showToast(
+      v === 'public' ? 'Post is public' : v === 'followers' ? 'Followers only' : 'Only you'
+    );
   };
 
   return (
@@ -324,7 +335,7 @@ export function PostCard({ post, onRemoved }: Props) {
                   style={styles.menuItem}
                   onPress={() => {
                     setMenuOpen(false);
-                    setEditText(body);
+                    setEditText(body || '');
                     setEditOpen(true);
                   }}
                 >
@@ -406,13 +417,13 @@ export function PostCard({ post, onRemoved }: Props) {
       </Modal>
 
       <Modal visible={editOpen} animationType="slide" onRequestClose={() => setEditOpen(false)}>
-        <View style={styles.editRoot}>
+        <SafeEditShell>
           <View style={styles.editHeader}>
             <Pressable onPress={() => setEditOpen(false)}>
               <Text style={styles.cancel}>Cancel</Text>
             </Pressable>
             <Text style={styles.editTitle}>Edit post</Text>
-            <Pressable onPress={saveEdit} disabled={saving}>
+            <Pressable onPress={saveEdit} disabled={saving || !editText.trim()}>
               {saving ? <ActivityIndicator color={colors.primary} /> : <Text style={styles.done}>Save</Text>}
             </Pressable>
           </View>
@@ -420,10 +431,16 @@ export function PostCard({ post, onRemoved }: Props) {
             style={styles.editInput}
             multiline
             value={editText}
-            onChangeText={setEditText}
+            onChangeText={(t) => setEditText(t.slice(0, MAX_POST_LEN))}
+            placeholder="What is on your mind?"
             placeholderTextColor={colors.textMuted}
+            maxLength={MAX_POST_LEN}
+            autoFocus
           />
-        </View>
+          <Text style={styles.editCount}>
+            {editText.length}/{MAX_POST_LEN}
+          </Text>
+        </SafeEditShell>
       </Modal>
 
       <Modal visible={commentsOpen} animationType="slide" transparent onRequestClose={() => setCommentsOpen(false)}>
@@ -479,6 +496,14 @@ export function PostCard({ post, onRemoved }: Props) {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+    </View>
+  );
+}
+
+function SafeEditShell({ children }: { children: React.ReactNode }) {
+  return (
+    <View style={styles.editRoot}>
+      {children}
     </View>
   );
 }
@@ -598,6 +623,12 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     minHeight: 160,
     textAlignVertical: 'top',
+  },
+  editCount: {
+    color: colors.textMuted,
+    fontSize: 12,
+    textAlign: 'right',
+    paddingHorizontal: spacing.xl,
   },
   modalRoot: { flex: 1, justifyContent: 'flex-end' },
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)' },
