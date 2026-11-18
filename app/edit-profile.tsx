@@ -16,6 +16,7 @@ import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { colors, radii, spacing } from '@/constants/theme';
 import { AppIcon } from '@/components/AppIcon';
+import { EditProfileSkeleton } from '@/components/Skeleton';
 import {
   fetchMyProfile,
   initials,
@@ -45,16 +46,19 @@ export default function EditProfileScreen() {
 
   useEffect(() => {
     (async () => {
-      const p = await fetchMyProfile();
-      if (p) {
-        setProfile(p);
-        setName(p.display_name || '');
-        setHandle(p.handle || '');
-        setBio(p.bio || '');
-        setStatusEmoji(p.status_emoji || null);
-        setAvatarUrl(p.avatar_url);
+      try {
+        const p = await fetchMyProfile();
+        if (p) {
+          setProfile(p);
+          setName(p.display_name || '');
+          setHandle(p.handle || '');
+          setBio(p.bio || '');
+          setStatusEmoji(p.status_emoji || null);
+          setAvatarUrl(p.avatar_url);
+        }
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     })();
   }, []);
 
@@ -144,9 +148,7 @@ export default function EditProfileScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.safe}>
-        <View style={styles.boot}>
-          <ActivityIndicator color={colors.primary} />
-        </View>
+        <EditProfileSkeleton />
       </SafeAreaView>
     );
   }
@@ -266,7 +268,6 @@ export default function EditProfileScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  boot: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
