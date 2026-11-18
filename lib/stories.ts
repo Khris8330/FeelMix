@@ -33,6 +33,8 @@ export type StoryRing = {
   open_id: string;
 };
 
+export const STORY_REACTION_EMOJIS = ['❤️', '😂', '🔥', '😮', '👏', '😢'] as const;
+
 function mapRow(row: any, myId: string | null, seen: Set<string>): StoryItem {
   const author = row.profiles || {};
   return {
@@ -264,4 +266,76 @@ export async function uploadStoryImage(file: {
 
   const { data: pub } = supabase.storage.from('media').getPublicUrl(path);
   return { error: null, url: pub.publicUrl };
+}
+
+export async function getMyStoryReaction(storyId: string): Promise<string | null> {
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return null;
+  const { data } = await supabase
+    .from('story_reactions')
+    .select('emoji')
+    .eq('story_id', storyId)
+    .eq('user_id', auth.user.id)
+    .maybeSingle();
+  return data?.emoji || null;
+}
+
+export async function setStoryReaction(storyId: string, emoji: string | null) {
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return { error: new Error('Not signed in') };
+
+  if (!emoji) {
+    const { error } = await supabase
+      .from('story_reactions')
+      .delete()
+      .eq('story_id', storyId)
+      .eq('user_id', auth.user.id);
+    return { error };
+  }
+
+  const { error } = await supabase.from('story_reactions').upsert(
+    {
+      story_id: storyId,
+      user_id: auth.user.id,
+      emoji,
+    },
+    { onConflict: 'story_id,user_id' }
+  );
+  return { error };
+}
+
+export async function replyToStory(storyId: string, body: string) {
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return { error: new Error('Not signed in') };
+
+  const text = body.trim();
+  if (!text) return { error: new Error('Empty reply') };
+
+  const { error } = await supabase.from('story_replies').insert({
+    story_id: storyId,
+    author_id: auth.user.id,
+    body: text,
+  });
+  return { error };
+}
+
+export async function fetchStoryReactionSummary(storyId: string): Promise<{
+  myEmoji: string | null;
+  counts: Record<string, number>;
+}> {
+  const { data: auth } = await supabase.auth.getUser();
+  const myId = auth.user?.id || null;
+
+  const { data } = await supabase
+    .from('story_reactions')
+    .select('user_id, emoji')
+    .eq('story_id', storyId);
+
+  const counts: Record<string, number> = {};
+  let myEmoji: string | null = null;
+  (data || []).forEach((r) => {
+    counts[r.emoji] = (counts[r.emoji] || 0) + 1;
+    if (myId && r.user_id === myId) myEmoji = r.emoji;
+  });
+  return { myEmoji, counts };
 }
