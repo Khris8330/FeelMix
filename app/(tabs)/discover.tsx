@@ -18,6 +18,7 @@ import { VibeCard } from '@/components/VibeCard';
 import { AppIcon } from '@/components/AppIcon';
 import { EmptyState } from '@/components/EmptyState';
 import { PostCard } from '@/components/PostCard';
+import { DiscoverSkeleton } from '@/components/Skeleton';
 import { type FeedPost } from '@/lib/posts';
 import {
   fetchSuggestedPeople,
@@ -38,16 +39,19 @@ export default function DiscoverScreen() {
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const [t, v, p] = await Promise.all([
-      fetchTrendingPosts(12),
-      fetchTrendingVibes(8),
-      fetchSuggestedPeople(10),
-    ]);
-    setTrending(t);
-    setVibePosts(v);
-    setPeople(p);
-    setLoading(false);
-    setRefreshing(false);
+    try {
+      const [t, v, p] = await Promise.all([
+        fetchTrendingPosts(12),
+        fetchTrendingVibes(8),
+        fetchSuggestedPeople(10),
+      ]);
+      setTrending(t);
+      setVibePosts(v);
+      setPeople(p);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, []);
 
   useFocusEffect(
@@ -79,9 +83,7 @@ export default function DiscoverScreen() {
       </View>
 
       {loading ? (
-        <View style={styles.boot}>
-          <ActivityIndicator color={colors.primary} />
-        </View>
+        <DiscoverSkeleton />
       ) : (
         <ScrollView
           contentContainerStyle={styles.content}
@@ -233,7 +235,6 @@ export default function DiscoverScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  boot: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   header: {
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,

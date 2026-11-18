@@ -23,6 +23,7 @@ import {
 import { formatRelativeTime } from '@/lib/posts';
 import { initials } from '@/lib/profile';
 import { EmptyState } from '@/components/EmptyState';
+import { MessagesSkeleton } from '@/components/Skeleton';
 import { showToast } from '@/lib/toast';
 
 export default function MessagesTabScreen() {
@@ -34,11 +35,14 @@ export default function MessagesTabScreen() {
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const [c, r] = await Promise.all([fetchConversations(), fetchIncomingRequests()]);
-    setConversations(c);
-    setRequests(r);
-    setLoading(false);
-    setRefreshing(false);
+    try {
+      const [c, r] = await Promise.all([fetchConversations(), fetchIncomingRequests()]);
+      setConversations(c);
+      setRequests(r);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, []);
 
   useFocusEffect(
@@ -84,9 +88,7 @@ export default function MessagesTabScreen() {
       </View>
 
       {loading ? (
-        <View style={styles.boot}>
-          <ActivityIndicator color={colors.primary} />
-        </View>
+        <MessagesSkeleton />
       ) : (
         <FlatList
           data={conversations}
@@ -235,7 +237,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
   },
   reqBadgeText: { color: colors.white, fontSize: 11, fontWeight: '800' },
-  boot: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   list: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxxl, flexGrow: 1 },
   section: {
     color: colors.textSecondary,
