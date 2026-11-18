@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useStateState } from 'react';
 import {
   View,
   Text,
@@ -15,9 +15,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { colors, radii, spacing } from '@/constants/theme';
 import { AppIcon } from '@/components/AppIcon';
+import { EmptyState } from '@/components/EmptyState';
 import {
   fetchMessages,
   getConversationOther,
+  markConversationRead,
   sendMessage,
   type ChatMessage,
 } from '@/lib/messages';
@@ -30,12 +32,14 @@ export default function ChatThreadScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const listRef = useRef<FlatList>(null);
+  const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [other, setOther] = useState<any>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [meId, setMeId] = useState<string | null>(null);
+  const [otherTyping, setOtherTyping] = useState(false);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -44,6 +48,7 @@ export default function ChatThreadScreen() {
     const [o, msgs] = await Promise.all([getConversationOther(id), fetchMessages(id)]);
     setOther(o);
     setMessages(msgs);
+    await markConversationRead(id);
     setLoading(false);
   }, [id]);
 
@@ -51,6 +56,7 @@ export default function ChatThreadScreen() {
     load();
   }, [load]);
 
+  // Incoming messages + mark read
   useEffect(() => {
     if (!id) return;
     const channel = subscribeMessages(id, (row) => {
@@ -68,11 +74,57 @@ export default function ChatThreadScreen() {
           },
         ];
       });
+      if (meId && row.sender_id !== meId) {
+        markConversationRead(id);
+      }
       setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 40);
     });
 
     return () => removeChannel(channel);
   }, [id, meId]);
+
+  // Typing indicator channel (broadcast)
+  useEffect(() => {
+    if (!id || !meId) return;
+
+    const channel = supabase.channel(`typing:${id}`, {
+      config: { broadcast: { self: false } },
+    });
+
+    channel
+      .on('broadcast', { event: 'typing' }, (payload) => {
+        const from = (payload.payload as any)?.userId;
+        if (!from || from === meId) return;
+        setOtherTyping(true);
+        if (typingTimer.current) clearTimeout(typingTimer.current);
+        typingTimer.current = setTimeout(() => setOtherTyping(false), 2000);
+      })
+      .subscribe();
+
+    return () => {
+      if (typingTimer.current) clearTimeout(typingTimer.current);
+      supabase.removeChannel(channel);
+    };
+  }, [id, meId]);
+
+  const emitTyping = () => {
+    if (!id || !meId) return;
+    const channel = supabase.channel(`typing:${id}`);
+    channel.subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        channel.send({
+          type: 'broadcast',
+          event: 'typing',
+          payload: { userId: meId },
+        });
+      }
+    });
+  };
+
+  const onChangeText = (value: string) => {
+    setText(value);
+    if (value.trim()) emitTyping();
+  };
 
   const onSend = async () => {
     if (!id || !text.trim() || sending) return;
@@ -108,7 +160,10 @@ export default function ChatThreadScreen() {
               <Text style={styles.initials}>{initials(name)}</Text>
             </View>
           )}
-          <Text style={styles.headerName}>{name}</Text>
+          <View>
+            <Text style={styles.headerName}>{name}</Text>
+            {otherTyping ? <Text style={styles.typingLabel}>typing…</Text> : null}
+          </View>
         </Pressable>
         <View style={{ width: 40 }} />
       </View>
@@ -130,13 +185,22 @@ export default function ChatThreadScreen() {
             contentContainerStyle={styles.list}
             onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
             ListEmptyComponent={
-              <Text style={styles.empty}>No messages yet. Say hello.</Text>
+              <EmptyState
+                icon="chatbubble-outline"
+                title="No messages yet"
+                subtitle="Say hello and start the conversation."
+              />
             }
             renderItem={({ item }) => (
               <View style={[styles.bubble, item.mine ? styles.mine : styles.theirs]}>
                 <Text style={[styles.bubbleText, item.mine && styles.mineText]}>
                   {item.body}
                 </Text>
+                {item.mine ? (
+                  <Text style={styles.receipt}>
+                    {item.read_at ? 'Read' : 'Sent'}
+                  </Text>
+                ) : null}
               </View>
             )}
           />
@@ -147,7 +211,7 @@ export default function ChatThreadScreen() {
               placeholder="Message"
               placeholderTextColor={colors.textMuted}
               value={text}
-              onChangeText={setText}
+              onChangeText={onChangeText}
               multiline
               maxLength={2000}
             />
@@ -200,16 +264,12 @@ const styles = StyleSheet.create({
   fallback: { alignItems: 'center', justifyContent: 'center' },
   initials: { color: colors.text, fontWeight: '800', fontSize: 11 },
   headerName: { color: colors.text, fontWeight: '700', fontSize: 16 },
+  typingLabel: { color: colors.primary, fontSize: 11, fontWeight: '600', marginTop: 1 },
   boot: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   list: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     flexGrow: 1,
-  },
-  empty: {
-    color: colors.textMuted,
-    textAlign: 'center',
-    marginTop: spacing.xxl,
   },
   bubble: {
     maxWidth: '78%',
@@ -232,6 +292,12 @@ const styles = StyleSheet.create({
   },
   bubbleText: { color: colors.text, fontSize: 15, lineHeight: 20 },
   mineText: { color: colors.white },
+  receipt: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 10,
+    marginTop: 4,
+    textAlign: 'right',
+  },
   composer: {
     flexDirection: 'row',
     alignItems: 'flex-end',

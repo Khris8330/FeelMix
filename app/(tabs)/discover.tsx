@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   Pressable,
+  Image,
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
@@ -16,17 +17,35 @@ import { lifeEvents } from '@/data/mock';
 import { VibeCard } from '@/components/VibeCard';
 import { AppIcon } from '@/components/AppIcon';
 import { EmptyState } from '@/components/EmptyState';
-import { fetchFeedPosts, type FeedPost } from '@/lib/posts';
+import { PostCard } from '@/components/PostCard';
+import { type FeedPost } from '@/lib/posts';
+import {
+  fetchSuggestedPeople,
+  fetchTrendingPosts,
+  fetchTrendingVibes,
+  type DiscoverPerson,
+} from '@/lib/discover';
+import { followUser, unfollowUser } from '@/lib/follows';
+import { initials } from '@/lib/profile';
 
 export default function DiscoverScreen() {
   const router = useRouter();
+  const [trending, setTrending] = useState<FeedPost[]>([]);
   const [vibePosts, setVibePosts] = useState<FeedPost[]>([]);
+  const [people, setPeople] = useState<DiscoverPerson[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const posts = await fetchFeedPosts(60);
-    setVibePosts(posts.filter((p) => p.vibe));
+    const [t, v, p] = await Promise.all([
+      fetchTrendingPosts(12),
+      fetchTrendingVibes(8),
+      fetchSuggestedPeople(10),
+    ]);
+    setTrending(t);
+    setVibePosts(v);
+    setPeople(p);
     setLoading(false);
     setRefreshing(false);
   }, []);
@@ -36,6 +55,22 @@ export default function DiscoverScreen() {
       load();
     }, [load])
   );
+
+  const toggleFollow = async (person: DiscoverPerson) => {
+    setBusyId(person.id);
+    if (person.is_following) {
+      await unfollowUser(person.id);
+      setPeople((list) =>
+        list.map((p) => (p.id === person.id ? { ...p, is_following: false } : p))
+      );
+    } else {
+      await followUser(person.id);
+      setPeople((list) =>
+        list.map((p) => (p.id === person.id ? { ...p, is_following: true } : p))
+      );
+    }
+    setBusyId(null);
+  };
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -93,7 +128,71 @@ export default function DiscoverScreen() {
             ))}
           </ScrollView>
 
-          <Text style={styles.section}>Trending vibes</Text>
+          <Text style={styles.section}>People to follow</Text>
+          {people.length ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={{ marginBottom: spacing.xxl }}
+            >
+              {people.map((p) => {
+                const name = p.display_name || p.handle;
+                return (
+                  <View key={p.id} style={styles.personCard}>
+                    <Pressable onPress={() => router.push(`/user/${p.id}`)}>
+                      {p.avatar_url ? (
+                        <Image source={{ uri: p.avatar_url }} style={styles.personAvatar} />
+                      ) : (
+                        <View style={[styles.personAvatar, styles.fallback]}>
+                          <Text style={styles.personInitials}>{initials(name)}</Text>
+                        </View>
+                      )}
+                      <Text style={styles.personName} numberOfLines={1}>
+                        {name}
+                      </Text>
+                      <Text style={styles.personHandle} numberOfLines={1}>
+                        @{p.handle}
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      style={[styles.followBtn, p.is_following && styles.followingBtn]}
+                      onPress={() => toggleFollow(p)}
+                      disabled={busyId === p.id}
+                    >
+                      {busyId === p.id ? (
+                        <ActivityIndicator size="small" color={colors.text} />
+                      ) : (
+                        <Text style={styles.followText}>
+                          {p.is_following ? 'Following' : 'Follow'}
+                        </Text>
+                      )}
+                    </Pressable>
+                  </View>
+                );
+              })}
+            </ScrollView>
+          ) : (
+            <Text style={styles.muted}>No suggestions right now.</Text>
+          )}
+
+          <Text style={styles.section}>Trending now</Text>
+          {trending.length ? (
+            trending.map((p) => (
+              <View key={p.id} style={{ marginBottom: spacing.md }}>
+                <PostCard post={p} />
+              </View>
+            ))
+          ) : (
+            <EmptyState
+              icon="flame-outline"
+              title="Nothing trending yet"
+              subtitle="Post, react, and share vibes to heat up the feed."
+              actionLabel="Create a post"
+              onAction={() => router.push('/(tabs)/create')}
+            />
+          )}
+
+          <Text style={[styles.section, { marginTop: spacing.xl }]}>Trending vibes</Text>
           {vibePosts.length ? (
             vibePosts.map((p) =>
               p.vibe ? (
@@ -189,4 +288,52 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
+  personCard: {
+    width: 140,
+    backgroundColor: colors.surface,
+    borderRadius: radii.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    marginRight: spacing.md,
+    alignItems: 'center',
+  },
+  personAvatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.surfaceElevated,
+    alignSelf: 'center',
+  },
+  fallback: { alignItems: 'center', justifyContent: 'center' },
+  personInitials: { color: colors.text, fontWeight: '800', fontSize: 18 },
+  personName: {
+    color: colors.text,
+    fontWeight: '800',
+    fontSize: 13,
+    marginTop: spacing.sm,
+    textAlign: 'center',
+  },
+  personHandle: {
+    color: colors.textMuted,
+    fontSize: 11,
+    marginTop: 2,
+    textAlign: 'center',
+  },
+  followBtn: {
+    marginTop: spacing.sm,
+    backgroundColor: colors.primary,
+    borderRadius: radii.pill,
+    paddingVertical: 6,
+    paddingHorizontal: spacing.md,
+    minWidth: 96,
+    alignItems: 'center',
+  },
+  followingBtn: {
+    backgroundColor: colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  followText: { color: colors.text, fontWeight: '700', fontSize: 12 },
+  muted: { color: colors.textMuted, marginBottom: spacing.xl },
 });

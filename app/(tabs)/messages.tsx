@@ -23,6 +23,7 @@ import {
 import { formatRelativeTime } from '@/lib/posts';
 import { initials } from '@/lib/profile';
 import { EmptyState } from '@/components/EmptyState';
+import { showToast } from '@/lib/toast';
 
 export default function MessagesTabScreen() {
   const router = useRouter();
@@ -50,22 +51,36 @@ export default function MessagesTabScreen() {
     setBusyId(id);
     const { conversationId, error } = await acceptDmRequest(id);
     setBusyId(null);
-    if (error || !conversationId) return;
+    if (error || !conversationId) {
+      showToast('Could not accept request');
+      return;
+    }
     setRequests((list) => list.filter((r) => r.id !== id));
+    showToast('Request accepted');
     router.push(`/messages/${conversationId}`);
   };
 
   const onDecline = async (id: string) => {
     setBusyId(id);
-    await declineDmRequest(id);
+    const { error } = await declineDmRequest(id);
     setBusyId(null);
+    if (error) {
+      showToast('Could not decline');
+      return;
+    }
     setRequests((list) => list.filter((r) => r.id !== id));
+    showToast('Request declined');
   };
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.title}>Messages</Text>
+        {requests.length ? (
+          <View style={styles.reqBadge}>
+            <Text style={styles.reqBadgeText}>{requests.length}</Text>
+          </View>
+        ) : null}
       </View>
 
       {loading ? (
@@ -90,7 +105,7 @@ export default function MessagesTabScreen() {
           ListHeaderComponent={
             requests.length ? (
               <View style={styles.requestsBlock}>
-                <Text style={styles.section}>Message requests</Text>
+                <Text style={styles.section}>Message requests · {requests.length}</Text>
                 {requests.map((r) => {
                   const name = r.from_user.display_name || r.from_user.handle;
                   return (
@@ -120,7 +135,11 @@ export default function MessagesTabScreen() {
                           disabled={busyId === r.id}
                           onPress={() => onAccept(r.id)}
                         >
-                          <Text style={styles.acceptText}>Accept</Text>
+                          {busyId === r.id ? (
+                            <ActivityIndicator color={colors.white} size="small" />
+                          ) : (
+                            <Text style={styles.acceptText}>Accept</Text>
+                          )}
                         </Pressable>
                         <Pressable
                           style={styles.declineBtn}
@@ -149,6 +168,7 @@ export default function MessagesTabScreen() {
           }
           renderItem={({ item }) => {
             const name = item.other.display_name || item.other.handle;
+            const unread = item.unread_count > 0;
             return (
               <Pressable
                 style={styles.convRow}
@@ -163,16 +183,28 @@ export default function MessagesTabScreen() {
                 )}
                 <View style={{ flex: 1 }}>
                   <View style={styles.convTop}>
-                    <Text style={styles.name}>{name}</Text>
+                    <Text style={[styles.name, unread && styles.nameUnread]}>{name}</Text>
                     {item.last_message_at ? (
-                      <Text style={styles.time}>
+                      <Text style={[styles.time, unread && styles.timeUnread]}>
                         {formatRelativeTime(item.last_message_at)}
                       </Text>
                     ) : null}
                   </View>
-                  <Text style={styles.preview} numberOfLines={1}>
-                    {item.last_body || 'Say hello'}
-                  </Text>
+                  <View style={styles.previewRow}>
+                    <Text
+                      style={[styles.preview, unread && styles.previewUnread]}
+                      numberOfLines={1}
+                    >
+                      {item.last_body || 'Say hello'}
+                    </Text>
+                    {unread ? (
+                      <View style={styles.unreadDot}>
+                        <Text style={styles.unreadCount}>
+                          {item.unread_count > 9 ? '9+' : item.unread_count}
+                        </Text>
+                      </View>
+                    ) : null}
+                  </View>
                 </View>
               </Pressable>
             );
@@ -186,10 +218,23 @@ export default function MessagesTabScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
   },
   title: { color: colors.text, fontWeight: '800', fontSize: 24 },
+  reqBadge: {
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+  },
+  reqBadgeText: { color: colors.white, fontSize: 11, fontWeight: '800' },
   boot: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   list: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxxl, flexGrow: 1 },
   section: {
@@ -218,7 +263,8 @@ const styles = StyleSheet.create({
   },
   fallback: { alignItems: 'center', justifyContent: 'center' },
   initials: { color: colors.text, fontWeight: '800', fontSize: 14 },
-  name: { color: colors.text, fontWeight: '800', fontSize: 15 },
+  name: { color: colors.text, fontWeight: '700', fontSize: 15 },
+  nameUnread: { fontWeight: '800' },
   sub: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
   reqActions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
   acceptBtn: {
@@ -227,6 +273,8 @@ const styles = StyleSheet.create({
     borderRadius: radii.pill,
     paddingVertical: spacing.sm,
     alignItems: 'center',
+    minHeight: 36,
+    justifyContent: 'center',
   },
   acceptText: { color: colors.white, fontWeight: '700' },
   declineBtn: {
@@ -253,5 +301,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   time: { color: colors.textMuted, fontSize: 12 },
-  preview: { color: colors.textSecondary, fontSize: 13, marginTop: 3 },
+  timeUnread: { color: colors.primary, fontWeight: '700' },
+  previewRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: 3 },
+  preview: { color: colors.textSecondary, fontSize: 13, flex: 1 },
+  previewUnread: { color: colors.text, fontWeight: '600' },
+  unreadDot: {
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 5,
+  },
+  unreadCount: { color: colors.white, fontSize: 11, fontWeight: '800' },
 });
