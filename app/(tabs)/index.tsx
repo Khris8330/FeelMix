@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -20,6 +20,13 @@ import { FeedSkeleton } from '@/components/Skeleton';
 import { fetchMyProfile, initials, type Profile } from '@/lib/profile';
 import { fetchFeedPosts, type FeedPost } from '@/lib/posts';
 import { unreadNotificationCount } from '@/lib/notifications';
+import { supabase } from '@/lib/supabase';
+import {
+  removeChannel,
+  subscribeNewPosts,
+  subscribeNotifications,
+  subscribeReactions,
+} from '@/lib/realtime';
 
 const HEADER_ICON_SIZE = 24;
 
@@ -31,8 +38,12 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [unread, setUnread] = useState(0);
+  const [userId, setUserId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    const { data: auth } = await supabase.auth.getUser();
+    setUserId(auth.user?.id || null);
+
     const [profile, posts, count] = await Promise.all([
       fetchMyProfile(),
       fetchFeedPosts(),
@@ -50,6 +61,46 @@ export default function HomeScreen() {
       load();
     }, [load])
   );
+
+  // Live notification badge
+  useEffect(() => {
+    if (!userId) return;
+    const channel = subscribeNotifications(userId, () => {
+      setUnread((c) => c + 1);
+    });
+    return () => removeChannel(channel);
+  }, [userId]);
+
+  // Soft refresh when someone posts
+  useEffect(() => {
+    const channel = subscribeNewPosts(() => {
+      // Reload feed so RLS + mapping stay correct
+      fetchFeedPosts().then(setFeed);
+    });
+    return () => removeChannel(channel);
+  }, []);
+
+  // Live reaction counts for posts currently in the feed
+  useEffect(() => {
+    const ids = feed.map((p) => p.id);
+    if (!ids.length) return;
+    const channel = subscribeReactions(ids, (event, row) => {
+      const postId = row.post_id as string;
+      setFeed((list) =>
+        list.map((p) => {
+          if (p.id !== postId) return p;
+          if (event === 'INSERT') {
+            return { ...p, likes_count: (p.likes_count || 0) + 1 };
+          }
+          if (event === 'DELETE') {
+            return { ...p, likes_count: Math.max(0, (p.likes_count || 0) - 1) };
+          }
+          return p;
+        })
+      );
+    });
+    return () => removeChannel(channel);
+  }, [feed.map((p) => p.id).join(',')]);
 
   const name = me?.display_name || me?.handle || '';
 
