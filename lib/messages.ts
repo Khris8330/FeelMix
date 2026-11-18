@@ -23,6 +23,7 @@ export type ConversationPreview = {
   id: string;
   last_message_at: string | null;
   last_body: string | null;
+  unread_count: number;
   other: {
     id: string;
     handle: string;
@@ -49,7 +50,6 @@ export async function getDmStatus(otherUserId: string): Promise<{
   if (!auth.user) return { status: 'none' };
   const me = auth.user.id;
 
-  // Existing conversation?
   const { data: myMemberships } = await supabase
     .from('conversation_members')
     .select('conversation_id')
@@ -198,6 +198,13 @@ export async function fetchConversations(): Promise<ConversationPreview[]> {
       .limit(1)
       .maybeSingle();
 
+    const { count: unread } = await supabase
+      .from('messages')
+      .select('id', { count: 'exact', head: true })
+      .eq('conversation_id', convId)
+      .neq('sender_id', me)
+      .is('read_at', null);
+
     const other = (otherMember as any)?.profiles;
     if (!other) continue;
 
@@ -205,6 +212,7 @@ export async function fetchConversations(): Promise<ConversationPreview[]> {
       id: convId,
       last_message_at: lastAt,
       last_body: lastMsg?.body || null,
+      unread_count: unread || 0,
       other: {
         id: other.id,
         handle: other.handle,
@@ -247,6 +255,19 @@ export async function fetchMessages(conversationId: string): Promise<ChatMessage
     read_at: m.read_at,
     mine: m.sender_id === auth.user!.id,
   }));
+}
+
+/** Mark messages from the other person as read. */
+export async function markConversationRead(conversationId: string) {
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return;
+
+  await supabase
+    .from('messages')
+    .update({ read_at: new Date().toISOString() })
+    .eq('conversation_id', conversationId)
+    .neq('sender_id', auth.user.id)
+    .is('read_at', null);
 }
 
 export async function sendMessage(conversationId: string, body: string) {
