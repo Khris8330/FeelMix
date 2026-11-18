@@ -16,6 +16,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { colors, radii, spacing } from '@/constants/theme';
 import { AppIcon } from '@/components/AppIcon';
 import { EmptyState } from '@/components/EmptyState';
+import { ChatSkeleton } from '@/components/Skeleton';
 import {
   fetchMessages,
   getConversationOther,
@@ -43,13 +44,16 @@ export default function ChatThreadScreen() {
 
   const load = useCallback(async () => {
     if (!id) return;
-    const { data: auth } = await supabase.auth.getUser();
-    setMeId(auth.user?.id || null);
-    const [o, msgs] = await Promise.all([getConversationOther(id), fetchMessages(id)]);
-    setOther(o);
-    setMessages(msgs);
-    await markConversationRead(id);
-    setLoading(false);
+    try {
+      const { data: auth } = await supabase.auth.getUser();
+      setMeId(auth.user?.id || null);
+      const [o, msgs] = await Promise.all([getConversationOther(id), fetchMessages(id)]);
+      setOther(o);
+      setMessages(msgs);
+      await markConversationRead(id);
+    } finally {
+      setLoading(false);
+    }
   }, [id]);
 
   useEffect(() => {
@@ -167,9 +171,7 @@ export default function ChatThreadScreen() {
       </View>
 
       {loading ? (
-        <View style={styles.boot}>
-          <ActivityIndicator color={colors.primary} />
-        </View>
+        <ChatSkeleton />
       ) : (
         <KeyboardAvoidingView
           style={{ flex: 1 }}
@@ -178,7 +180,7 @@ export default function ChatThreadScreen() {
         >
           <FlatList
             ref={listRef}
-             data={messages}
+            data={messages}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.list}
             onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
@@ -263,7 +265,6 @@ const styles = StyleSheet.create({
   initials: { color: colors.text, fontWeight: '800', fontSize: 11 },
   headerName: { color: colors.text, fontWeight: '700', fontSize: 16 },
   typingLabel: { color: colors.primary, fontSize: 11, fontWeight: '600', marginTop: 1 },
-  boot: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   list: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
