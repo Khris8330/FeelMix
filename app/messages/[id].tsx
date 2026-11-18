@@ -23,6 +23,8 @@ import {
 } from '@/lib/messages';
 import { initials } from '@/lib/profile';
 import { supabase } from '@/lib/supabase';
+import { removeChannel, subscribeMessages } from '@/lib/realtime';
+import { safeGoBack } from '@/lib/navigation';
 
 export default function ChatThreadScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -33,9 +35,12 @@ export default function ChatThreadScreen() {
   const [loading, setLoading] = useState(true);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
+  const [meId, setMeId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!id) return;
+    const { data: auth } = await supabase.auth.getUser();
+    setMeId(auth.user?.id || null);
     const [o, msgs] = await Promise.all([getConversationOther(id), fetchMessages(id)]);
     setOther(o);
     setMessages(msgs);
@@ -48,40 +53,26 @@ export default function ChatThreadScreen() {
 
   useEffect(() => {
     if (!id) return;
-    const channel = supabase
-      .channel(`chat-${id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `conversation_id=eq.${id}`,
-        },
-        (payload) => {
-          const row = payload.new as any;
-          setMessages((list) => {
-            if (list.some((m) => m.id === row.id)) return list;
-            return [
-              ...list,
-              {
-                id: row.id,
-                body: row.body,
-                sender_id: row.sender_id,
-                created_at: row.created_at,
-                read_at: row.read_at,
-                mine: false,
-              },
-            ];
-          });
-        }
-      )
-      .subscribe();
+    const channel = subscribeMessages(id, (row) => {
+      setMessages((list) => {
+        if (list.some((m) => m.id === row.id)) return list;
+        return [
+          ...list,
+          {
+            id: row.id,
+            body: row.body,
+            sender_id: row.sender_id,
+            created_at: row.created_at,
+            read_at: row.read_at,
+            mine: !!meId && row.sender_id === meId,
+          },
+        ];
+      });
+      setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 40);
+    });
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [id]);
+    return () => removeChannel(channel);
+  }, [id, meId]);
 
   const onSend = async () => {
     if (!id || !text.trim() || sending) return;
@@ -103,7 +94,7 @@ export default function ChatThreadScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={12} style={styles.backBtn}>
+        <Pressable onPress={() => safeGoBack(router)} hitSlop={12} style={styles.backBtn}>
           <AppIcon name="arrow-back" size={22} color={colors.text} />
         </Pressable>
         <Pressable
