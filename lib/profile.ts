@@ -25,6 +25,25 @@ export type PublicProfile = Profile & {
 const PROFILE_SELECT =
   'id, handle, display_name, avatar_url, bio, status_emoji, is_verified, posts_count, followers_count, following_count, vibes_count, is_private, allow_message_requests';
 
+export const STATUS_EMOJIS = [
+  '🙂',
+  '😎',
+  '🔥',
+  '💜',
+  '✨',
+  '🎵',
+  '🎬',
+  '🌙',
+  '⚡',
+  '🌿',
+  '💫',
+  '🎯',
+  '☕',
+  '🚀',
+  '🥰',
+  '😂',
+] as const;
+
 export async function fetchMyProfile(): Promise<Profile | null> {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return null;
@@ -65,6 +84,7 @@ export async function updateMyProfile(patch: {
   bio?: string | null;
   handle?: string;
   avatar_url?: string | null;
+  status_emoji?: string | null;
   is_private?: boolean;
   allow_message_requests?: boolean;
 }) {
@@ -73,7 +93,7 @@ export async function updateMyProfile(patch: {
 
   const { data, error } = await supabase
     .from('profiles')
-    .update(patch)
+    .update({ ...patch, updated_at: new Date().toISOString() })
     .eq('id', auth.user.id)
     .select(PROFILE_SELECT)
     .single();
@@ -137,4 +157,24 @@ export function initials(name: string): string {
   if (!parts.length) return '?';
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return (parts[0][0] + parts[1][0]).toUpperCase();
+}
+
+export function validateDisplayName(name: string): string | null {
+  const t = name.trim();
+  if (t.length < 2) return 'Name must be at least 2 characters.';
+  if (t.length > 40) return 'Name must be 40 characters or less.';
+  return null;
+}
+
+export function validateHandle(handle: string): string | null {
+  const clean = handle.trim().toLowerCase();
+  if (clean.length < 3) return 'Handle must be at least 3 characters.';
+  if (clean.length > 20) return 'Handle must be 20 characters or less.';
+  if (!/^[a-z0-9_]+$/.test(clean)) return 'Handle can only use letters, numbers, and underscores.';
+  return null;
+}
+
+export function validateBio(bio: string): string | null {
+  if (bio.length > 160) return 'Bio must be 160 characters or less.';
+  return null;
 }

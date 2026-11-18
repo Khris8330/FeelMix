@@ -19,10 +19,16 @@ import { AppIcon } from '@/components/AppIcon';
 import {
   fetchMyProfile,
   initials,
+  STATUS_EMOJIS,
   updateMyProfile,
   uploadAvatar,
+  validateBio,
+  validateDisplayName,
+  validateHandle,
   type Profile,
 } from '@/lib/profile';
+import { safeGoBack } from '@/lib/navigation';
+import { showToast } from '@/lib/toast';
 
 export default function EditProfileScreen() {
   const router = useRouter();
@@ -30,6 +36,7 @@ export default function EditProfileScreen() {
   const [name, setName] = useState('');
   const [handle, setHandle] = useState('');
   const [bio, setBio] = useState('');
+  const [statusEmoji, setStatusEmoji] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -44,6 +51,7 @@ export default function EditProfileScreen() {
         setName(p.display_name || '');
         setHandle(p.handle || '');
         setBio(p.bio || '');
+        setStatusEmoji(p.status_emoji || null);
         setAvatarUrl(p.avatar_url);
       }
       setLoading(false);
@@ -85,37 +93,52 @@ export default function EditProfileScreen() {
       }
       return;
     }
-    if (url) setAvatarUrl(url);
+    if (url) {
+      setAvatarUrl(url);
+      showToast('Photo updated');
+    }
   };
 
   const onSave = async () => {
     setError(null);
-    if (!name.trim()) {
-      setError('Name is required.');
+    const nameErr = validateDisplayName(name);
+    if (nameErr) {
+      setError(nameErr);
       return;
     }
-    const cleanHandle = handle
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9_]/g, '');
-    if (cleanHandle.length < 3) {
-      setError('Handle must be at least 3 characters (a-z, 0-9, _).');
+    const handleErr = validateHandle(handle);
+    if (handleErr) {
+      setError(handleErr);
       return;
     }
+    const bioErr = validateBio(bio);
+    if (bioErr) {
+      setError(bioErr);
+      return;
+    }
+
+    const cleanHandle = handle.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
 
     setSaving(true);
     const { error: saveError } = await updateMyProfile({
       display_name: name.trim(),
       handle: cleanHandle,
       bio: bio.trim() || null,
+      status_emoji: statusEmoji,
     });
     setSaving(false);
 
     if (saveError) {
-      setError(saveError.message);
+      const msg = saveError.message || 'Could not save';
+      if (/duplicate|unique|handle/i.test(msg)) {
+        setError('That handle is already taken.');
+      } else {
+        setError(msg);
+      }
       return;
     }
-    router.back();
+    showToast('Profile saved');
+    safeGoBack(router, '/(tabs)/profile');
   };
 
   if (loading) {
@@ -135,7 +158,7 @@ export default function EditProfileScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <View style={styles.topBar}>
-          <Pressable onPress={() => router.back()} hitSlop={10}>
+          <Pressable onPress={() => safeGoBack(router, '/(tabs)/profile')} hitSlop={10}>
             <AppIcon name="arrow-back" size={22} color={colors.text} />
           </Pressable>
           <Text style={styles.topTitle}>Edit profile</Text>
@@ -166,10 +189,34 @@ export default function EditProfileScreen() {
                 <AppIcon name="camera" size={16} color={colors.white} />
               )}
             </View>
+            {statusEmoji ? (
+              <View style={styles.statusBadge}>
+                <Text style={{ fontSize: 16 }}>{statusEmoji}</Text>
+              </View>
+            ) : null}
           </Pressable>
           <Text style={styles.changePhoto} onPress={pickPhoto}>
             {uploading ? 'Uploading…' : 'Change photo'}
           </Text>
+
+          <Text style={styles.label}>Status</Text>
+          <View style={styles.emojiRow}>
+            <Pressable
+              style={[styles.emojiChip, !statusEmoji && styles.emojiChipActive]}
+              onPress={() => setStatusEmoji(null)}
+            >
+              <Text style={styles.emojiNone}>None</Text>
+            </Pressable>
+            {STATUS_EMOJIS.map((e) => (
+              <Pressable
+                key={e}
+                style={[styles.emojiChip, statusEmoji === e && styles.emojiChipActive]}
+                onPress={() => setStatusEmoji(e)}
+              >
+                <Text style={{ fontSize: 18 }}>{e}</Text>
+              </Pressable>
+            ))}
+          </View>
 
           <Text style={styles.label}>Name</Text>
           <TextInput
@@ -178,17 +225,25 @@ export default function EditProfileScreen() {
             onChangeText={setName}
             placeholderTextColor={colors.textMuted}
             placeholder="Display name"
+            maxLength={40}
           />
+          <Text style={styles.hint}>{name.trim().length}/40</Text>
 
           <Text style={styles.label}>Handle</Text>
-          <TextInput
-            style={styles.input}
-            value={handle}
-            onChangeText={setHandle}
-            autoCapitalize="none"
-            placeholderTextColor={colors.textMuted}
-            placeholder="username"
-          />
+          <View style={styles.handleRow}>
+            <Text style={styles.at}>@</Text>
+            <TextInput
+              style={[styles.input, styles.handleInput]}
+              value={handle}
+              onChangeText={(t) => setHandle(t.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+              autoCapitalize="none"
+              autoCorrect={false}
+              placeholderTextColor={colors.textMuted}
+              placeholder="username"
+              maxLength={20}
+            />
+          </View>
+          <Text style={styles.hint}>{handle.length}/20 · letters, numbers, underscore</Text>
 
           <Text style={styles.label}>Bio</Text>
           <TextInput
@@ -198,7 +253,9 @@ export default function EditProfileScreen() {
             multiline
             placeholderTextColor={colors.textMuted}
             placeholder="Tell people about your vibes"
+            maxLength={160}
           />
+          <Text style={styles.hint}>{bio.length}/160</Text>
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
         </ScrollView>
@@ -257,11 +314,24 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.bg,
   },
+  statusBadge: {
+    position: 'absolute',
+    left: 2,
+    bottom: 2,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.bg,
+  },
   changePhoto: {
     color: colors.primary,
     fontWeight: '700',
     marginTop: spacing.md,
-    marginBottom: spacing.xxl,
+    marginBottom: spacing.lg,
   },
   label: {
     alignSelf: 'stretch',
@@ -271,6 +341,28 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
     textTransform: 'uppercase',
   },
+  emojiRow: {
+    alignSelf: 'stretch',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: spacing.lg,
+  },
+  emojiChip: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  emojiChipActive: {
+    borderColor: colors.primary,
+    backgroundColor: 'rgba(255,61,138,0.12)',
+  },
+  emojiNone: { color: colors.textMuted, fontSize: 11, fontWeight: '700' },
   input: {
     alignSelf: 'stretch',
     backgroundColor: colors.surface,
@@ -281,16 +373,38 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     color: colors.text,
     fontSize: 16,
-    marginBottom: spacing.lg,
+  },
+  handleRow: {
+    alignSelf: 'stretch',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  at: {
+    color: colors.textMuted,
+    fontSize: 16,
+    fontWeight: '700',
+    marginRight: 4,
+  },
+  handleInput: {
+    flex: 1,
+    marginBottom: 0,
   },
   bioInput: {
     minHeight: 100,
     textAlignVertical: 'top',
   },
+  hint: {
+    alignSelf: 'stretch',
+    color: colors.textMuted,
+    fontSize: 11,
+    marginTop: 4,
+    marginBottom: spacing.lg,
+  },
   error: {
     alignSelf: 'stretch',
-    color: colors.danger,
+    color: colors.danger || '#F87171',
     fontSize: 13,
     fontWeight: '600',
+    marginTop: spacing.sm,
   },
 });
