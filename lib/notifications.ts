@@ -111,6 +111,10 @@ export function notificationCopy(n: AppNotification): string {
       return `${who} reposted your post`;
     case 'dm_request':
       return `${who} requested to message you`;
+    case 'story_reply': {
+      const preview = n.meta?.preview ? `: "${n.meta.preview}"` : '';
+      return `${who} replied to your story${preview}`;
+    }
     default:
       return `${who} interacted with you`;
   }
