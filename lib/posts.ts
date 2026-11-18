@@ -2,6 +2,16 @@ import { supabase } from './supabase';
 import type { VibeEmbed } from '@/data/mock';
 import { getFollowingIds } from './follows';
 
+/** Posts can only be edited within this window after creation. */
+export const POST_EDIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+
+export function canEditPost(createdAt: string | null | undefined): boolean {
+  if (!createdAt) return false;
+  const t = new Date(createdAt).getTime();
+  if (Number.isNaN(t)) return false;
+  return Date.now() - t <= POST_EDIT_WINDOW_MS;
+}
+
 export type FeedAuthor = {
   id: string;
   handle: string;
@@ -195,7 +205,7 @@ export async function fetchFeedPosts(limit = 40): Promise<FeedPost[]> {
     return [];
   }
 
-  const ids = data.map((r) => r.id);
+  const ids = data.map((rr) => r.id);
   const { liked, reposted, myReactions } = await engagementSets(ids);
   return data
     .map((r) => mapRow(r, liked, reposted, myReactions))
@@ -401,6 +411,19 @@ export async function updatePostBody(postId: string, body: string) {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return { error: new Error('Not signed in') };
 
+  const { data: row, error: fetchErr } = await supabase
+    .from('posts')
+    .select('id, created_at, author_id')
+    .eq('id', postId)
+    .eq('author_id', auth.user.id)
+    .maybeSingle();
+
+  if (fetchErr) return { error: fetchErr };
+  if (!row) return { error: new Error('Post not found') };
+  if (!canEditPost(row.created_at)) {
+    return { error: new Error('Posts can only be edited within 1 hour of posting.') };
+  }
+
   const { error } = await supabase
     .from('posts')
     .update({ body: body.trim() })
@@ -414,7 +437,7 @@ export async function updatePostVisibility(
   postId: string,
   visibility: 'public' | 'followers' | 'private'
 ) {
-  const { data: auth } = await supabase.auth.getUser();
+ dec const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return { error: new Error('Not signed in') };
 
   const { error } = await supabase
