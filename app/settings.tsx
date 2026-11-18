@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { colors, radii, spacing } from '@/constants/theme';
 import { AppIcon } from '@/components/AppIcon';
+import { SettingsSkeleton } from '@/components/Skeleton';
 import { fetchMyProfile, updateMyProfile, type Profile } from '@/lib/profile';
 import { signOut } from '@/lib/session';
 import { safeGoBack } from '@/lib/navigation';
@@ -72,13 +73,16 @@ export default function SettingsScreen() {
   useFocusEffect(
     useCallback(() => {
       (async () => {
-        const p = await fetchMyProfile();
-        setProfile(p);
-        if (p) {
-          setPrivateAccount(!!p.is_private);
-          setAllowMessageRequests(p.allow_message_requests !== false);
+        try {
+          const p = await fetchMyProfile();
+          setProfile(p);
+          if (p) {
+            setPrivateAccount(!!p.is_private);
+            setAllowMessageRequests(p.allow_message_requests !== false);
+          }
+        } finally {
+          setLoading(false);
         }
-        setLoading(false);
       })();
     }, [])
   );
@@ -126,9 +130,7 @@ export default function SettingsScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.safe}>
-        <View style={styles.boot}>
-          <ActivityIndicator color={colors.primary} />
-        </View>
+        <SettingsSkeleton />
       </SafeAreaView>
     );
   }
@@ -256,7 +258,6 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  boot: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
