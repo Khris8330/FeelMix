@@ -205,7 +205,7 @@ export async function fetchFeedPosts(limit = 40): Promise<FeedPost[]> {
     return [];
   }
 
-  const ids = data.map((rr) => r.id);
+  const ids = data.map((r) => r.id);
   const { liked, reposted, myReactions } = await engagementSets(ids);
   return data
     .map((r) => mapRow(r, liked, reposted, myReactions))
@@ -437,7 +437,7 @@ export async function updatePostVisibility(
   postId: string,
   visibility: 'public' | 'followers' | 'private'
 ) {
- dec const { data: auth } = await supabase.auth.getUser();
+  const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return { error: new Error('Not signed in') };
 
   const { error } = await supabase
