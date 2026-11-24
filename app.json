@@ -7,6 +7,7 @@
     "icon": "./branding/icons/Icon-512.png",
     "scheme": "krimie",
     "userInterfaceStyle": "dark",
+    "newArchEnabled": false,
     "splash": {
       "image": "./branding/icons/Icon-512.png",
       "resizeMode": "contain",
@@ -14,14 +15,26 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "app.krimie.mobile"
+      "bundleIdentifier": "app.krimie.mobile",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Krimie needs photo access so you can set a profile picture, post images, and share stories.",
+        "NSCameraUsageDescription": "Krimie needs camera access so you can take photos for posts and stories.",
+        "NSPhotoLibraryAddUsageDescription": "Krimie may save images you create to your library."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./branding/icons/Icon-512.png",
         "backgroundColor": "#0B0B12"
       },
-      "package": "app.krimie.mobile"
+      "package": "app.krimie.mobile",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -29,10 +42,25 @@
       "favicon": "./branding/icons/favicon.png"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Krimie to access your photos for posts, stories, and profile pictures.",
+          "cameraPermission": "Allow Krimie to use the camera for posts and stories."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "placeholder-replace-when-you-run-eas-init"
+      }
     }
   }
 }
